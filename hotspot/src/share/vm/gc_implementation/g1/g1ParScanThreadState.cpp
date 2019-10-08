@@ -244,9 +244,17 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
   const oop obj = oop(obj_ptr);
   const oop forward_ptr = old->forward_to_atomic(obj);
   if (forward_ptr == NULL) {
-			if (word_sz >= 512) //cgmin size
-					printf("par %p %p %d\n",(void*)old, (void*)obj_ptr, (int)word_sz);
-    Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, word_sz);
+			//cgmin par
+			if (word_sz >= 512 && (unsigned long)old % 4096 == 0 && (unsigned long)obj_ptr % 4096 == 0) //cgmin size
+			{
+					size_t size2 = (word_sz/512)*512;
+//					printf("par %p %p %d\n",(void*)old, (void*)obj_ptr, (int)word_sz); //cgmin test
+	    Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, 2);
+			syscall(333,((HeapWord*)old),obj_ptr,(size2)*8);
+	    Copy::aligned_disjoint_words(((HeapWord*) old)+size2, obj_ptr+size2, word_sz-size2);
+		}
+			else
+	    Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, word_sz);
 
     if (dest_state.is_young()) {
       if (age < markOopDesc::max_age) {
