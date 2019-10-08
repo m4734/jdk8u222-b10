@@ -34,6 +34,26 @@
 inline HeapWord* ThreadLocalAllocBuffer::allocate(size_t size) {
   invariants();
   HeapWord* obj = top();
+
+//cgmin TLAB
+	if (size >= 512) //cgmin size
+	{
+			HeapWord* obj2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(obj)-1)/4096+1)*4096);
+			if (end() >= obj2 && pointer_delta(end(), obj2) >= size)
+			{
+					size_t pd = pointer_delta(obj2,obj);
+					if (pd >= CollectedHeap::min_fill_size())
+					{
+							CollectedHeap::fill_with_object(obj,pd);
+							obj = obj2;
+					}
+			}
+			/*
+			else
+					printf("cgmin tlab fail\n"); //cgmin test
+					*/
+	}
+
   if (pointer_delta(end(), obj) >= size) {
     // successful thread-local allocation
 #ifdef ASSERT

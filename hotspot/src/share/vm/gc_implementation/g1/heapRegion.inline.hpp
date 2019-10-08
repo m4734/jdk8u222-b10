@@ -32,9 +32,29 @@
 #include "runtime/atomic.inline.hpp"
 
 // This version requires locking.
+ /*
 inline HeapWord* G1OffsetTableContigSpace::allocate_impl(size_t size,
                                                 HeapWord* const end_value) {
-  HeapWord* obj = top();
+																								*/
+ inline HeapWord* G1OffsetTableContigSpace::allocate_impl(size_t size,
+                                                HeapWord* const end_value,bool bot = false) //cgmin alloc bot
+{
+ HeapWord* obj = top();
+	//cgmin alloc
+	if (size >= 512) //cgmin size
+	{
+			HeapWord* obj2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(obj)-1)/4096+1)*4096);
+			size_t pd = pointer_delta(obj2,obj);
+
+			if (obj2 + size <= end() && pd >= CollectedHeap::min_fill_size())
+			{
+					CollectedHeap::fill_with_object(obj,pd);
+					if (bot)
+						_offsets.alloc_block(obj, pd); // no check?
+					obj = obj2;
+			}
+			
+	}
   if (pointer_delta(end_value, obj) >= size) {
     HeapWord* new_top = obj + size;
     set_top(new_top);
@@ -50,15 +70,40 @@ inline HeapWord* G1OffsetTableContigSpace::par_allocate_impl(size_t size,
                                                     HeapWord* const end_value) {
   do {
     HeapWord* obj = top();
+		HeapWord* obj2;
+		size_t pd,_size;
+		//cgmin par alloc
+		if (size >= 512) //cgmin size
+		{
+				obj2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(obj)-1)/4096+1)*4096);
+				pd = pointer_delta(obj2,obj);
+				if (end() >= obj2+size && pd >= CollectedHeap::min_fill_size())
+						_size = size+pd;
+				else
+				{
+						obj2 = obj;
+						pd = 0;
+						_size = size;
+				}
+		}
+		else
+		{
+				obj2 = obj;
+				pd = 0;
+				_size = size;
+		}
+
     if (pointer_delta(end_value, obj) >= size) {
-      HeapWord* new_top = obj + size;
+      HeapWord* new_top = obj + _size;
       HeapWord* result = (HeapWord*)Atomic::cmpxchg_ptr(new_top, top_addr(), obj);
       // result can be one of two:
       //  the old top value: the exchange succeeded
       //  otherwise: the new value of the top is returned.
       if (result == obj) {
-        assert(is_aligned(obj) && is_aligned(new_top), "checking alignment");
-        return obj;
+        assert(is_ailigned(obj) && is_aligned(new_top), "checking alignment");
+				if (obj != obj2)
+						CollectedHeap::fill_with_object(obj,pd);
+        return obj2;
       }
     } else {
       return NULL;
@@ -67,7 +112,7 @@ inline HeapWord* G1OffsetTableContigSpace::par_allocate_impl(size_t size,
 }
 
 inline HeapWord* G1OffsetTableContigSpace::allocate(size_t size) {
-  HeapWord* res = allocate_impl(size, end());
+  HeapWord* res = allocate_impl(size, end(),true); //cgmin bot call
   if (res != NULL) {
     _offsets.alloc_block(res, size);
   }

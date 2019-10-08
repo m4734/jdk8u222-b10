@@ -276,6 +276,9 @@ inline HeapWord* Space::block_start(const void* p) {
                                                                                 \
       /* copy object and reinit its mark */                                     \
       assert(q != compaction_top, "everything in this pass should be moving");  \
+				/* cgmin here */ \
+				if (size >= 512) /*cgmin size*/ \
+					printf("full %p %p %lu\n",q,compaction_top,size); \
       Copy::aligned_conjoint_words(q, compaction_top, size);                    \
       oop(compaction_top)->init_mark();                                         \
       assert(oop(compaction_top)->klass() != NULL, "should have a class");      \

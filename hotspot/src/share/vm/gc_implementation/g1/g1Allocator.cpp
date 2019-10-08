@@ -122,6 +122,8 @@ HeapWord* G1ParGCAllocator::allocate_direct_or_new_plab(InCSetState dest,
     add_to_alloc_buffer_waste(alloc_buf->words_remaining());
     alloc_buf->retire(false /* end_of_gc */, false /* retain */);
 
+		//cgmin no 4k
+		//cgmin here but pass
     HeapWord* buf = _g1h->par_allocate_during_gc(dest, gclab_word_size, context);
     if (buf == NULL) {
       return NULL; // Let caller handle allocation failure.

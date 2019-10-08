@@ -325,6 +325,7 @@ public:
 
 // A structure to represent a point at which objects are being copied
 // during compaction.
+// cgmin here?
 class CompactPoint : public StackObj {
 public:
   Generation* gen;
@@ -347,9 +348,39 @@ private:
   HeapWord* _compaction_top;
   CompactibleSpace* _next_compaction_space;
 
+	//cgmin forward obj array
+	GrowableArray<HeapWord*>* _obj_addr;
+	GrowableArray<size_t>* _obj_size;
+	int _obj_cnt;
+
 public:
   CompactibleSpace() :
-   _compaction_top(NULL), _next_compaction_space(NULL) {}
+   _compaction_top(NULL), _next_compaction_space(NULL) {
+	 //cgmin forward obj array init
+	 _obj_addr = new (ResourceObj::C_HEAP, mtGC) GrowableArray<HeapWord*>(32,true,mtGC);
+	 _obj_size = new (ResourceObj::C_HEAP, mtGC) GrowableArray<size_t>(32,true,mtGC);
+
+	 _obj_cnt = 0;
+	 }
+
+	~CompactibleSpace() //cgmin forward obj array delete
+	{
+			delete _obj_addr;
+			delete _obj_size;
+	}
+
+	void fill_obj() //cgmin forward obj fill
+	{
+			int i;
+			HeapWord* addr;
+			size_t size;
+			for (i=1;i<=_obj_cnt;++i)
+			{
+					addr = _obj_addr->pop();
+					size = _obj_size->pop();
+					CollectedHeap::fill_with_object(addr,size);
+			}
+	}
 
   virtual void initialize(MemRegion mr, bool clear_space, bool mangle_space);
   virtual void clear(bool mangle_space);

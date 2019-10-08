@@ -137,7 +137,8 @@ class G1OffsetTableContigSpace: public CompactibleSpace {
 
   HeapWord** top_addr() { return &_top; }
   // Allocation helpers (return NULL if full).
-  inline HeapWord* allocate_impl(size_t word_size, HeapWord* end_value);
+//  inline HeapWord* allocate_impl(size_t word_size, HeapWord* end_value);
+  inline HeapWord* allocate_impl(size_t word_size, HeapWord* end_value, bool bot); //cgmin bot alloc
   inline HeapWord* par_allocate_impl(size_t word_size, HeapWord* end_value);
 
  public:

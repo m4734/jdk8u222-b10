@@ -227,6 +227,13 @@ public:
                           size_t word_sz,
                           AllocationContext_t context) {
     G1ParGCAllocBuffer* buffer = alloc_buffer(dest, context);
+		//cgmin plab
+		if (word_sz >= 512) //cgmin size
+		{
+				HeapWord* result = buffer->allocate_aligned(word_sz,4096);
+				if (result != NULL)
+						return result;
+		}
     if (_survivor_alignment_bytes == 0) {
       return buffer->allocate(word_sz);
     } else {

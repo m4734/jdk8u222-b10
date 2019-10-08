@@ -379,6 +379,7 @@ void CompactibleSpace::clear(bool mangle_space) {
 
 HeapWord* CompactibleSpace::forward(oop q, size_t size,
                                     CompactPoint* cp, HeapWord* compact_top) {
+		size_t pd = 0; //cgmin forward 0
   // q is alive
   // First check if we should switch compaction space
   assert(this == cp->space, "'this' should be current compaction space.");
@@ -401,6 +402,24 @@ HeapWord* CompactibleSpace::forward(oop q, size_t size,
 
   // store the forwarding pointer into the mark word
   if ((HeapWord*)q != compact_top) {
+			//cgmin forward
+			if (size >= 512) //cgmin size
+			{
+					HeapWord* ct2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(compact_top)-1)/4096+1)*4096);
+					pd = pointer_delta(ct2,compact_top);
+					if (compaction_max_size >= size+pd /*object_will_fit(size+pd)*/ && pd >= CollectedHeap::min_fill_size())
+					{
+							//fill object
+							
+							_obj_addr->append(compact_top);
+							_obj_size->append(pd);
+							++_obj_cnt;
+							
+							compact_top = ct2;
+					}
+					else
+							pd = 0;
+			}
     q->forward_to(oop(compact_top));
     assert(q->is_gc_marked(), "encoding the pointer should preserve the mark");
   } else {
@@ -409,6 +428,12 @@ HeapWord* CompactibleSpace::forward(oop q, size_t size,
     q->init_mark();
     assert(q->forwardee() == NULL, "should be forwarded to NULL");
   }
+
+	if (pd) //cgmin threshold (?)
+	{
+			if (compact_top > cp->threshold)
+					cp->threshold = cp->space->cross_threshold(compact_top-pd, compact_top);
+	}
 
   compact_top += size;
 
@@ -496,6 +521,7 @@ void CompactibleSpace::adjust_pointers() {
 
 void CompactibleSpace::compact() {
   SCAN_AND_COMPACT(obj_size);
+	fill_obj(); //cgmin fill obj
 }
 
 void Space::print_short() const { print_short_on(tty); }

@@ -77,6 +77,24 @@ public:
   // return NULL.
   HeapWord* allocate(size_t word_sz) {
     HeapWord* res = _top;
+		//cgmin plab first alloc
+		if (word_sz >= 512) //cgmin size
+		{
+			HeapWord* res2;
+			HeapWord* _top2;
+			size_t pd;
+			res2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(_top)-1)/4096+1)*4096);
+			_top2 = res2+word_sz;
+			pd = pointer_delta(_top,res2);
+
+			if (_end >= _top2 && pointer_delta(_end,_top2) >= word_sz && pd >= CollectedHeap::min_fill_size())
+		 	{
+					CollectedHeap::fill_with_object(_top,pd);
+					_top = _top2;
+					return res2;
+			}
+		}
+
     if (pointer_delta(_end, _top) >= word_sz) {
       _top = _top + word_sz;
       return res;
