@@ -533,7 +533,7 @@ protected:
   HeapWord* attempt_allocation_slow(size_t word_size,
                                     AllocationContext_t context,
                                     uint* gc_count_before_ret,
-                                    uint* gclocker_retry_count_ret);
+                                    uint* gclocker_retry_count_ret, HeapWord** rv2); //cgmin dirty block
 
   // Takes the Heap_lock and attempts a humongous allocation. It can
   // potentially schedule a GC pause.
@@ -547,7 +547,7 @@ protected:
   // or not.
   HeapWord* attempt_allocation_at_safepoint(size_t word_size,
                                             AllocationContext_t context,
-                                            bool expect_null_mutator_alloc_region);
+                                            bool expect_null_mutator_alloc_region, HeapWord** rv2); //cgmin dirty block
 
   // It dirties the cards that cover the block so that so that the post
   // write barrier never queues anything when updating objects on this
@@ -613,13 +613,13 @@ protected:
   // failed allocation request (including collection, expansion, etc.)
   HeapWord* satisfy_failed_allocation(size_t word_size,
                                       AllocationContext_t context,
-                                      bool* succeeded);
+                                      bool* succeeded, HeapWord** rv2); //cgmin dirty block
 
   // Attempting to expand the heap sufficiently
   // to support an allocation of the given "word_size".  If
   // successful, perform the allocation and return the address of the
   // allocated block, or else "NULL".
-  HeapWord* expand_and_allocate(size_t word_size, AllocationContext_t context);
+  HeapWord* expand_and_allocate(size_t word_size, AllocationContext_t context,HeapWord** rv2); //cgmin dirty block
 
   // Process any reference objects discovered during
   // an incremental evacuation pause.
@@ -771,7 +771,7 @@ protected:
   HeapWord* do_collection_pause(size_t         word_size,
                                 uint           gc_count_before,
                                 bool*          succeeded,
-                                GCCause::Cause gc_cause);
+                                GCCause::Cause gc_cause, HeapWord** rv2); //cgmin dirty block
 
   // The guts of the incremental collection pause, executed by the vm
   // thread. It returns false if it is unable to do the collection due

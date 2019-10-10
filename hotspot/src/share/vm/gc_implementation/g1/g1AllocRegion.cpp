@@ -112,7 +112,7 @@ void G1AllocRegion::retire(bool fill_up) {
 }
 
 HeapWord* G1AllocRegion::new_alloc_region_and_allocate(size_t word_size,
-                                                       bool force) {
+                                                       bool force, HeapWord** rv2 = NULL) {
   assert(_alloc_region == _dummy_region, ar_ext_msg(this, "pre-condition"));
   assert(_used_bytes_before == 0, ar_ext_msg(this, "pre-condition"));
 
@@ -122,7 +122,7 @@ HeapWord* G1AllocRegion::new_alloc_region_and_allocate(size_t word_size,
     new_alloc_region->reset_pre_dummy_top();
     // Need to do this before the allocation
     _used_bytes_before = new_alloc_region->used();
-    HeapWord* result = allocate(new_alloc_region, word_size, _bot_updates);
+    HeapWord* result = allocate(new_alloc_region, word_size, _bot_updates,rv2);
     assert(result != NULL, ar_ext_msg(this, "the allocation should succeeded"));
 
     OrderAccess::storestore();

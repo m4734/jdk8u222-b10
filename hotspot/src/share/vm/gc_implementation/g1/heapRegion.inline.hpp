@@ -37,7 +37,7 @@ inline HeapWord* G1OffsetTableContigSpace::allocate_impl(size_t size,
                                                 HeapWord* const end_value) {
 																								*/
  inline HeapWord* G1OffsetTableContigSpace::allocate_impl(size_t size,
-                                                HeapWord* const end_value,bool bot = false) //cgmin alloc bot
+                                                HeapWord* const end_value,HeapWord** rv2 = NULL) //cgmin alloc bot
 {
  HeapWord* obj = top();
 	//cgmin alloc
@@ -49,8 +49,12 @@ inline HeapWord* G1OffsetTableContigSpace::allocate_impl(size_t size,
 			if (obj2 + size <= end() && pd >= CollectedHeap::min_fill_size())
 			{
 					CollectedHeap::fill_with_object(obj,pd);
+					if (rv2)
+						*rv2 = obj;
+					/*
 					if (bot)
 						_offsets.alloc_block(obj, pd); // no check?
+						*/
 					obj = obj2;
 			}
 			
@@ -67,7 +71,7 @@ inline HeapWord* G1OffsetTableContigSpace::allocate_impl(size_t size,
 
 // This version is lock-free.
 inline HeapWord* G1OffsetTableContigSpace::par_allocate_impl(size_t size,
-                                                    HeapWord* const end_value) {
+                                                    HeapWord* const end_value, HeapWord** rv2 = NULL) {
   do {
     HeapWord* obj = top();
 		HeapWord* obj2;
@@ -93,16 +97,20 @@ inline HeapWord* G1OffsetTableContigSpace::par_allocate_impl(size_t size,
 				_size = size;
 		}
 
-    if (pointer_delta(end_value, obj) >= size) {
+    if (pointer_delta(end_value, obj) >= _size) {
       HeapWord* new_top = obj + _size;
       HeapWord* result = (HeapWord*)Atomic::cmpxchg_ptr(new_top, top_addr(), obj);
       // result can be one of two:
       //  the old top value: the exchange succeeded
       //  otherwise: the new value of the top is returned.
       if (result == obj) {
-        assert(is_ailigned(obj) && is_aligned(new_top), "checking alignment");
+        assert(is_aligned(obj) && is_aligned(new_top), "checking alignment");
 				if (obj != obj2)
+				{
 						CollectedHeap::fill_with_object(obj,pd);
+						if (rv2)
+							*rv2 = obj;
+				}
         return obj2;
       }
     } else {
@@ -110,10 +118,21 @@ inline HeapWord* G1OffsetTableContigSpace::par_allocate_impl(size_t size,
     }
   } while (true);
 }
+inline HeapWord* G1OffsetTableContigSpace::allocate(size_t size) { //cgmin virtual
+		allocate(size,NULL);
+}
 
-inline HeapWord* G1OffsetTableContigSpace::allocate(size_t size) {
-  HeapWord* res = allocate_impl(size, end(),true); //cgmin bot call
+inline HeapWord* G1OffsetTableContigSpace::allocate(size_t size,HeapWord** rv2 = NULL) {
+	HeapWord* rv3 = NULL;
+  HeapWord* res = allocate_impl(size, end(),&rv3); //cgmin bot call
   if (res != NULL) {
+			if (rv3 != NULL) //cgmin bot
+			{
+				_offsets.alloc_block(rv3,pointer_delta(res,rv3));
+				if (rv2)
+					*rv2 = rv3;
+			}
+			
     _offsets.alloc_block(res, size);
   }
   return res;
@@ -122,9 +141,14 @@ inline HeapWord* G1OffsetTableContigSpace::allocate(size_t size) {
 // Because of the requirement of keeping "_offsets" up to date with the
 // allocations, we sequentialize these with a lock.  Therefore, best if
 // this is used for larger LAB allocations only.
-inline HeapWord* G1OffsetTableContigSpace::par_allocate(size_t size) {
+
+inline HeapWord* G1OffsetTableContigSpace::par_allocate(size_t size) { //cgmin virtual
+		par_allocate(size,NULL);
+}
+
+inline HeapWord* G1OffsetTableContigSpace::par_allocate(size_t size,HeapWord** rv2 = NULL) { //cgmin dirty block
   MutexLocker x(&_par_alloc_lock);
-  return allocate(size);
+  return allocate(size,rv2);
 }
 
 inline HeapWord* G1OffsetTableContigSpace::block_start(const void* p) {
@@ -172,14 +196,14 @@ HeapRegion::block_size(const HeapWord *addr) const {
   return pointer_delta(next, addr);
 }
 
-inline HeapWord* HeapRegion::par_allocate_no_bot_updates(size_t word_size) {
+inline HeapWord* HeapRegion::par_allocate_no_bot_updates(size_t word_size, HeapWord** rv2 = NULL) { //cgmin dirty block
   assert(is_young(), "we can only skip BOT updates on young regions");
-  return par_allocate_impl(word_size, end());
+  return par_allocate_impl(word_size, end(),rv2);
 }
 
-inline HeapWord* HeapRegion::allocate_no_bot_updates(size_t word_size) {
+inline HeapWord* HeapRegion::allocate_no_bot_updates(size_t word_size,HeapWord** rv2 = NULL) {
   assert(is_young(), "we can only skip BOT updates on young regions");
-  return allocate_impl(word_size, end());
+  return allocate_impl(word_size, end(),rv2);
 }
 
 inline void HeapRegion::note_start_of_marking() {

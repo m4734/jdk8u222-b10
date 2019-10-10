@@ -250,7 +250,7 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
 					size_t size2 = (word_sz/512)*512;
 //					printf("par %p %p %d\n",(void*)old, (void*)obj_ptr, (int)word_sz); //cgmin test
 	    Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, 2);
-			syscall(333,((HeapWord*)old),obj_ptr,(size2)*8);
+			syscall(333,((HeapWord*)old),obj_ptr,(size2)*8); //cgmin sysall
 	    Copy::aligned_disjoint_words(((HeapWord*) old)+size2, obj_ptr+size2, word_sz-size2);
 		}
 			else

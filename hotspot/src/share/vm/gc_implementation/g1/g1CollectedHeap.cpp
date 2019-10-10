@@ -840,7 +840,7 @@ G1CollectedHeap::mem_allocate(size_t word_size,
   // Loop until the allocation is satisfied, or unsatisfied after GC.
   for (uint try_count = 1, gclocker_retry_count = 0; /* we'll return */; try_count += 1) {
     uint gc_count_before;
-
+		HeapWord* rv2 = NULL; //cgmin dirty block
     HeapWord* result = NULL;
     if (!isHumongous(word_size)) {
       result = attempt_allocation(word_size, &gc_count_before, &gclocker_retry_count);
@@ -852,7 +852,7 @@ G1CollectedHeap::mem_allocate(size_t word_size,
     }
 
     // Create the garbage collection operation...
-    VM_G1CollectForAllocation op(gc_count_before, word_size);
+    VM_G1CollectForAllocation op(gc_count_before, word_size,&rv2); //cgmin dirty block
     op.set_allocation_context(AllocationContext::current());
 
     // ...and get the VM thread to execute it.
@@ -867,6 +867,8 @@ G1CollectedHeap::mem_allocate(size_t word_size,
         // Allocations that take place on VM operations do not do any
         // card dirtying and we have to do it here. We only have to do
         // this for non-humongous allocations, though.
+				if (rv2)
+						dirty_young_block(rv2,pointer_delta(result,rv2)); //cgmin dirty block
         dirty_young_block(result, word_size);
       }
       return result;
@@ -892,7 +894,7 @@ G1CollectedHeap::mem_allocate(size_t word_size,
 HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size,
                                                    AllocationContext_t context,
                                                    uint* gc_count_before_ret,
-                                                   uint* gclocker_retry_count_ret) {
+                                                   uint* gclocker_retry_count_ret, HeapWord** rv2 = NULL) { //cgmin dirty block
   // Make sure you read the note in attempt_allocation_humongous().
 
   assert_heap_not_locked_and_not_at_safepoint();
@@ -914,7 +916,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size,
     {
       MutexLockerEx x(Heap_lock);
       result = _allocator->mutator_alloc_region(context)->attempt_allocation_locked(word_size,
-                                                                                    false /* bot_updates */);
+                                                                                    false /* bot_updates */,rv2);
       if (result != NULL) {
         return result;
       }
@@ -928,7 +930,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size,
           // No need for an ergo verbose message here,
           // can_expand_young_list() does this when it returns true.
           result = _allocator->mutator_alloc_region(context)->attempt_allocation_force(word_size,
-                                                                                       false /* bot_updates */);
+                                                                                       false /* bot_updates */,rv2);
           if (result != NULL) {
             return result;
           }
@@ -953,7 +955,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size,
     if (should_try_gc) {
       bool succeeded;
       result = do_collection_pause(word_size, gc_count_before, &succeeded,
-                                   GCCause::_g1_inc_collection_pause);
+                                   GCCause::_g1_inc_collection_pause,rv2); //cgmin dirty block
       if (result != NULL) {
         assert(succeeded, "only way to get back a non-NULL result");
         return result;
@@ -989,7 +991,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size,
     // follow-on attempt will be at the start of the next loop
     // iteration (after taking the Heap_lock).
     result = _allocator->mutator_alloc_region(context)->attempt_allocation(word_size,
-                                                                           false /* bot_updates */);
+                                                                           false /* bot_updates */,rv2);
     if (result != NULL) {
       return result;
     }
@@ -1079,7 +1081,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_humongous(size_t word_size,
 
       bool succeeded;
       result = do_collection_pause(word_size, gc_count_before, &succeeded,
-                                   GCCause::_g1_humongous_allocation);
+                                   GCCause::_g1_humongous_allocation,NULL); //cgmin dirty block
       if (result != NULL) {
         assert(succeeded, "only way to get back a non-NULL result");
         return result;
@@ -1126,7 +1128,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_humongous(size_t word_size,
 
 HeapWord* G1CollectedHeap::attempt_allocation_at_safepoint(size_t word_size,
                                                            AllocationContext_t context,
-                                                           bool expect_null_mutator_alloc_region) {
+                                                           bool expect_null_mutator_alloc_region, HeapWord** rv2 = NULL) { //cgmin dirty block
   assert_at_safepoint(true /* should_be_vm_thread */);
   assert(_allocator->mutator_alloc_region(context)->get() == NULL ||
                                              !expect_null_mutator_alloc_region,
@@ -1134,7 +1136,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_at_safepoint(size_t word_size,
 
   if (!isHumongous(word_size)) {
     return _allocator->mutator_alloc_region(context)->attempt_allocation_locked(word_size,
-                                                      false /* bot_updates */);
+                                                      false /* bot_updates */,rv2);
   } else {
     HeapWord* result = humongous_obj_allocate(word_size, context);
     if (result != NULL && g1_policy()->need_to_start_conc_mark("STW humongous allocation")) {
@@ -1648,7 +1650,7 @@ resize_if_necessary_after_full_collection(size_t word_size) {
 HeapWord*
 G1CollectedHeap::satisfy_failed_allocation(size_t word_size,
                                            AllocationContext_t context,
-                                           bool* succeeded) {
+                                           bool* succeeded, HeapWord** rv2 = NULL) { //cgmin dirty block
   assert_at_safepoint(true /* should_be_vm_thread */);
 
   *succeeded = true;
@@ -1656,7 +1658,7 @@ G1CollectedHeap::satisfy_failed_allocation(size_t word_size,
   HeapWord* result =
     attempt_allocation_at_safepoint(word_size,
                                     context,
-                                    false /* expect_null_mutator_alloc_region */);
+                                    false /* expect_null_mutator_alloc_region */,rv2);
   if (result != NULL) {
     assert(*succeeded, "sanity");
     return result;
@@ -1666,7 +1668,7 @@ G1CollectedHeap::satisfy_failed_allocation(size_t word_size,
   // incremental pauses.  Therefore, at least for now, we'll favor
   // expansion over collection.  (This might change in the future if we can
   // do something smarter than full collection to satisfy a failed alloc.)
-  result = expand_and_allocate(word_size, context);
+  result = expand_and_allocate(word_size, context,rv2); //cgmin dirty block
   if (result != NULL) {
     assert(*succeeded, "sanity");
     return result;
@@ -1684,7 +1686,7 @@ G1CollectedHeap::satisfy_failed_allocation(size_t word_size,
   // Retry the allocation
   result = attempt_allocation_at_safepoint(word_size,
                                            context,
-                                           true /* expect_null_mutator_alloc_region */);
+                                           true /* expect_null_mutator_alloc_region */,rv2);
   if (result != NULL) {
     assert(*succeeded, "sanity");
     return result;
@@ -1702,7 +1704,7 @@ G1CollectedHeap::satisfy_failed_allocation(size_t word_size,
   // Retry the allocation once more
   result = attempt_allocation_at_safepoint(word_size,
                                            context,
-                                           true /* expect_null_mutator_alloc_region */);
+                                           true /* expect_null_mutator_alloc_region */,rv2);
   if (result != NULL) {
     assert(*succeeded, "sanity");
     return result;
@@ -1724,7 +1726,7 @@ G1CollectedHeap::satisfy_failed_allocation(size_t word_size,
 // successful, perform the allocation and return the address of the
 // allocated block, or else "NULL".
 
-HeapWord* G1CollectedHeap::expand_and_allocate(size_t word_size, AllocationContext_t context) {
+HeapWord* G1CollectedHeap::expand_and_allocate(size_t word_size, AllocationContext_t context, HeapWord** rv2 = NULL) { //cgmin dirty block
   assert_at_safepoint(true /* should_be_vm_thread */);
 
   verify_region_sets_optional();
@@ -1740,7 +1742,7 @@ HeapWord* G1CollectedHeap::expand_and_allocate(size_t word_size, AllocationConte
     verify_region_sets_optional();
     return attempt_allocation_at_safepoint(word_size,
                                            context,
-                                           false /* expect_null_mutator_alloc_region */);
+                                           false /* expect_null_mutator_alloc_region */,rv2); //cgmin dirty block
   }
   return NULL;
 }
@@ -2501,7 +2503,7 @@ void G1CollectedHeap::collect(GCCause::Cause cause) {
                                  0,     /* word_size */
                                  true,  /* should_initiate_conc_mark */
                                  g1_policy()->max_pause_time_ms(),
-                                 cause);
+                                 cause, NULL); //cgmin dirty block
       op.set_allocation_context(AllocationContext::current());
 
       VMThread::execute(&op);
@@ -2530,7 +2532,7 @@ void G1CollectedHeap::collect(GCCause::Cause cause) {
                                    0,     /* word_size */
                                    false, /* should_initiate_conc_mark */
                                    g1_policy()->max_pause_time_ms(),
-                                   cause);
+                                   cause,NULL); //cgmin dirty block
         VMThread::execute(&op);
       } else {
         // Schedule a Full GC.
@@ -3618,14 +3620,15 @@ void G1CollectedHeap::gc_epilogue(bool full) {
 HeapWord* G1CollectedHeap::do_collection_pause(size_t word_size,
                                                uint gc_count_before,
                                                bool* succeeded,
-                                               GCCause::Cause gc_cause) {
+                                               GCCause::Cause gc_cause,
+																							 HeapWord** rv2 = NULL) { //cgmin dirty block
   assert_heap_not_locked_and_not_at_safepoint();
   g1_policy()->record_stop_world_start();
   VM_G1IncCollectionPause op(gc_count_before,
                              word_size,
                              false, /* should_initiate_conc_mark */
                              g1_policy()->max_pause_time_ms(),
-                             gc_cause);
+                             gc_cause,rv2); //cgmin dirty block
 
   op.set_allocation_context(AllocationContext::current());
   VMThread::execute(&op);

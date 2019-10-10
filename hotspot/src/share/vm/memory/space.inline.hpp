@@ -281,7 +281,7 @@ inline HeapWord* Space::block_start(const void* p) {
 				{ \
 					/*printf("full %p %p %lu\n",q,compaction_top,size); */ \
 						size_t size2 = (size/512)*512; \
-						syscall(333,q,compaction_top,size2*8); \
+						syscall(333,q,compaction_top,size2*8); /* cgmin syscall */ \
 			      Copy::aligned_conjoint_words(q+size2, compaction_top+size2, size-size2);       \
 				} \
 				else \

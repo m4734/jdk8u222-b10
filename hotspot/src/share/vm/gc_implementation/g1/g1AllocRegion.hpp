@@ -96,12 +96,12 @@ private:
   // Perform a non-MT-safe allocation out of the given region.
   static inline HeapWord* allocate(HeapRegion* alloc_region,
                                    size_t word_size,
-                                   bool bot_updates);
+                                   bool bot_updates, HeapWord** rv2); //cgmin dirty block
 
   // Perform a MT-safe allocation out of the given region.
   static inline HeapWord* par_allocate(HeapRegion* alloc_region,
                                        size_t word_size,
-                                       bool bot_updates);
+                                       bool bot_updates, HeapWord** rv2); //cgmin dirty block
 
   // Ensure that the region passed as a parameter has been filled up
   // so that noone else can allocate out of it any more.
@@ -121,7 +121,7 @@ private:
   // allocation. The force parameter will be passed on to
   // G1CollectedHeap::allocate_new_alloc_region() and tells it to try
   // to allocate a new region even if the max has been reached.
-  HeapWord* new_alloc_region_and_allocate(size_t word_size, bool force);
+  HeapWord* new_alloc_region_and_allocate(size_t word_size, bool force,HeapWord** rv2); //cgmin dirty block
 
   void fill_in_ext_msg(ar_ext_msg* msg, const char* message);
 
@@ -154,7 +154,7 @@ public:
   // First-level allocation: Should be called without holding a
   // lock. It will try to allocate lock-free out of the active region,
   // or return NULL if it was unable to.
-  inline HeapWord* attempt_allocation(size_t word_size, bool bot_updates);
+  inline HeapWord* attempt_allocation(size_t word_size, bool bot_updates, HeapWord** rv2); //cgmin dirty block
 
   // Second-level allocation: Should be called while holding a
   // lock. It will try to first allocate lock-free out of the active
@@ -163,14 +163,14 @@ public:
   // appropriate lock before calling this so that it is easier to make
   // it conform to its locking protocol.
   inline HeapWord* attempt_allocation_locked(size_t word_size,
-                                             bool bot_updates);
+                                             bool bot_updates, HeapWord** rv2); //cgmin dirty block
 
   // Should be called to allocate a new region even if the max of this
   // type of regions has been reached. Should only be called if other
   // allocation attempts have failed and we are not holding a valid
   // active region.
   inline HeapWord* attempt_allocation_force(size_t word_size,
-                                            bool bot_updates);
+                                            bool bot_updates,HeapWord** rv2); //cgmin dirty block
 
   // Should be called before we start using this object.
   void init();

@@ -68,12 +68,14 @@ public:
 class VM_G1CollectForAllocation: public VM_G1OperationWithAllocRequest {
 public:
   VM_G1CollectForAllocation(uint         gc_count_before,
-                            size_t       word_size);
+                            size_t       word_size,
+														HeapWord** rv2); //cgmin dirty block
   virtual VMOp_Type type() const { return VMOp_G1CollectForAllocation; }
   virtual void doit();
   virtual const char* name() const {
     return "garbage-first collection to satisfy allocation";
   }
+	HeapWord** rv2; //cgmin dirty block
 };
 
 class VM_G1IncCollectionPause: public VM_G1OperationWithAllocRequest {
@@ -87,7 +89,8 @@ public:
                           size_t         word_size,
                           bool           should_initiate_conc_mark,
                           double         target_pause_time_ms,
-                          GCCause::Cause gc_cause);
+                          GCCause::Cause gc_cause,
+													HeapWord** rv2); //cgmin dirty block
   virtual VMOp_Type type() const { return VMOp_G1IncCollectionPause; }
   virtual bool doit_prologue();
   virtual void doit();
@@ -96,6 +99,8 @@ public:
     return "garbage-first incremental collection pause";
   }
   bool should_retry_gc() const { return _should_retry_gc; }
+
+	HeapWord** rv2;
 };
 
 // Concurrent GC stop-the-world operations such as remark and cleanup;

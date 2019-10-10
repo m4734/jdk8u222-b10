@@ -35,17 +35,19 @@
 #include "runtime/interfaceSupport.hpp"
 
 VM_G1CollectForAllocation::VM_G1CollectForAllocation(uint gc_count_before,
-                                                     size_t word_size)
+                                                     size_t word_size,
+																										 HeapWord** in_rv2 = NULL) //cgmin dirty block
   : VM_G1OperationWithAllocRequest(gc_count_before, word_size,
-                                   GCCause::_allocation_failure) {
+                                   GCCause::_allocation_failure),rv2(in_rv2) {
   guarantee(word_size != 0, "An allocation should always be requested with this operation.");
+//	rv2 = in_rv2;
 }
 
 void VM_G1CollectForAllocation::doit() {
   G1CollectedHeap* g1h = G1CollectedHeap::heap();
   GCCauseSetter x(g1h, _gc_cause);
 
-  _result = g1h->satisfy_failed_allocation(_word_size, allocation_context(), &_pause_succeeded);
+  _result = g1h->satisfy_failed_allocation(_word_size, allocation_context(), &_pause_succeeded,rv2); //cgmin dirty block
   assert(_result == NULL || _pause_succeeded,
          "if we get back a result, the pause should have succeeded");
 }
@@ -60,12 +62,14 @@ VM_G1IncCollectionPause::VM_G1IncCollectionPause(uint           gc_count_before,
                                                  size_t         word_size,
                                                  bool           should_initiate_conc_mark,
                                                  double         target_pause_time_ms,
-                                                 GCCause::Cause gc_cause)
+                                                 GCCause::Cause gc_cause,
+																								 HeapWord** in_rv2 = NULL) //cgmin dirty block
   : VM_G1OperationWithAllocRequest(gc_count_before, word_size, gc_cause),
     _should_initiate_conc_mark(should_initiate_conc_mark),
     _target_pause_time_ms(target_pause_time_ms),
     _should_retry_gc(false),
-    _old_marking_cycles_completed_before(0) {
+    _old_marking_cycles_completed_before(0),
+rv2(in_rv2) { //cgmin dirty block
   guarantee(target_pause_time_ms > 0.0,
             err_msg("target_pause_time_ms = %1.6lf should be positive",
                     target_pause_time_ms));
@@ -96,7 +100,7 @@ void VM_G1IncCollectionPause::doit() {
   if (_word_size > 0) {
     // An allocation has been requested. So, try to do that first.
     _result = g1h->attempt_allocation_at_safepoint(_word_size, allocation_context(),
-                                     false /* expect_null_cur_alloc_region */);
+                                     false /* expect_null_cur_alloc_region */,rv2); //cgmin dirty block
     if (_result != NULL) {
       // If we can successfully allocate before we actually do the
       // pause then we will consider this pause successful.
@@ -149,7 +153,7 @@ void VM_G1IncCollectionPause::doit() {
   if (_pause_succeeded && _word_size > 0) {
     // An allocation had been requested.
     _result = g1h->attempt_allocation_at_safepoint(_word_size, allocation_context(),
-                                      true /* expect_null_cur_alloc_region */);
+                                      true /* expect_null_cur_alloc_region */,rv2); //cgmin dirty block
   } else {
     assert(_result == NULL, "invariant");
     if (!_pause_succeeded) {

@@ -138,8 +138,8 @@ class G1OffsetTableContigSpace: public CompactibleSpace {
   HeapWord** top_addr() { return &_top; }
   // Allocation helpers (return NULL if full).
 //  inline HeapWord* allocate_impl(size_t word_size, HeapWord* end_value);
-  inline HeapWord* allocate_impl(size_t word_size, HeapWord* end_value, bool bot); //cgmin bot alloc
-  inline HeapWord* par_allocate_impl(size_t word_size, HeapWord* end_value);
+  inline HeapWord* allocate_impl(size_t word_size, HeapWord* end_value, HeapWord** rv2); //cgmin bot alloc
+  inline HeapWord* par_allocate_impl(size_t word_size, HeapWord* end_value, HeapWord** rv2); //cgmin dirty block
 
  public:
   void reset_after_compaction() { set_top(compaction_top()); }
@@ -181,8 +181,11 @@ class G1OffsetTableContigSpace: public CompactibleSpace {
   void prepare_for_compaction(CompactPoint* cp);
 
   // Add offset table update.
-  virtual HeapWord* allocate(size_t word_size);
-  HeapWord* par_allocate(size_t word_size);
+  virtual HeapWord* allocate(size_t word_size); //cgmin virtual
+  virtual HeapWord* allocate(size_t word_size, HeapWord** rv2); //cgmin dirty block
+
+	HeapWord* par_allocate(size_t word_size); //cgmin virtyal
+  HeapWord* par_allocate(size_t word_size, HeapWord** rv2); //cgmin dirty block
 
   HeapWord* saved_mark_word() const { ShouldNotReachHere(); return NULL; }
 
@@ -352,8 +355,8 @@ class HeapRegion: public G1OffsetTableContigSpace {
   // and the amount of unallocated words if called on top()
   size_t block_size(const HeapWord* p) const;
 
-  inline HeapWord* par_allocate_no_bot_updates(size_t word_size);
-  inline HeapWord* allocate_no_bot_updates(size_t word_size);
+  inline HeapWord* par_allocate_no_bot_updates(size_t word_size,HeapWord** rv2); //cgmin dirty block
+  inline HeapWord* allocate_no_bot_updates(size_t word_size,HeapWord** rv2); //cgmin dirty block
 
   // If this region is a member of a HeapRegionManager, the index in that
   // sequence, otherwise -1.
