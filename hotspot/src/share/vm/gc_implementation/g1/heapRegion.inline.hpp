@@ -93,7 +93,7 @@ inline HeapWord* G1OffsetTableContigSpace::par_allocate_impl(size_t size,
 				_size = size;
 		}
 
-    if (pointer_delta(end_value, obj) >= size) {
+    if (pointer_delta(end_value, obj) >= _size) {
       HeapWord* new_top = obj + _size;
       HeapWord* result = (HeapWord*)Atomic::cmpxchg_ptr(new_top, top_addr(), obj);
       // result can be one of two:

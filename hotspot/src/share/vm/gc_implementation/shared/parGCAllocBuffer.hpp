@@ -85,7 +85,7 @@ public:
 			size_t pd;
 			res2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(_top)-1)/4096+1)*4096);
 			_top2 = res2+word_sz;
-			pd = pointer_delta(_top,res2);
+			pd = pointer_delta(res2,_top);
 
 			if (_end >= _top2 && pointer_delta(_end,_top2) >= word_sz && pd >= CollectedHeap::min_fill_size())
 		 	{
