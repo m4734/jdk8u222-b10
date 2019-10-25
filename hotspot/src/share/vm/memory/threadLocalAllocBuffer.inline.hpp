@@ -34,12 +34,15 @@
 inline HeapWord* ThreadLocalAllocBuffer::allocate(size_t size) {
   invariants();
   HeapWord* obj = top();
-
+if (obj == NULL)
+{
+	printf("???\n");
+}
 //cgmin TLAB
-	if (size-2 >= 512) //cgmin size
+	if (false && size-2 >= 512) //cgmin size
 	{
 			HeapWord* obj2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(obj)-1)/4096+1)*4096)-2;
-			if (obj2 >= obj && end() >= obj2 && pointer_delta(end(), obj2) >= size)
+			if (obj2 > obj && end() >= obj2 && pointer_delta(end(), obj2) >= size)
 			{
 					size_t pd = pointer_delta(obj2,obj);
 					if (pd >= CollectedHeap::min_fill_size())
@@ -47,14 +50,11 @@ inline HeapWord* ThreadLocalAllocBuffer::allocate(size_t size) {
 							CollectedHeap::fill_with_object(obj,pd);
 							obj = obj2;
 					}
-					else if (pd == 0)
-							obj = obj2;
-
 			}
-			/*
+			
 			else
-					printf("cgmin tlab fail\n"); //cgmin test
-					*/
+					printf("cgmin tlab fail %p %p %p %u\n",obj,obj2,end(),size); //cgmin test
+					
 	}
 
   if (pointer_delta(end(), obj) >= size) {

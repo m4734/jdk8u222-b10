@@ -41,10 +41,10 @@ inline HeapWord* G1OffsetTableContigSpace::allocate_impl(size_t size,
 {
  HeapWord* obj = top();
 	//cgmin alloc
-	if (size-2 >= 512) //cgmin size
+	if (false && size-2 >= 512) //cgmin size
 	{
 			HeapWord* obj2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(obj)-1)/4096+1)*4096)-2;
-if (obj2 >= obj && obj2 + size <= end())
+if (obj2 > obj && obj2 + size <= end_value /* end() */)
 {
 			size_t pd = pointer_delta(obj2,obj);
 			if (pd >= CollectedHeap::min_fill_size())
@@ -52,10 +52,6 @@ if (obj2 >= obj && obj2 + size <= end())
 				CollectedHeap::fill_with_object(obj,pd);
 				if (bot)
 					_offsets.alloc_block(obj, pd); // no check?
-				obj = obj2;
-			}
-			else if (pd == 0)
-			{
 				obj = obj2;
 			}
 }
@@ -78,12 +74,13 @@ inline HeapWord* G1OffsetTableContigSpace::par_allocate_impl(size_t size,
 		HeapWord* obj2;
 		size_t pd,_size;
 		//cgmin par alloc
-		if (size-2 >= 512) //cgmin size
+		if (false && size-2 >= 512) //cgmin size
 		{
 				obj2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(obj)-1)/4096+1)*4096)-2;
-				if (obj2 >= obj)
+				if (obj2 > obj)
+{
 					pd = pointer_delta(obj2,obj);
-				if (obj2 >= obj && end() >= obj2+size && (pd >= CollectedHeap::min_fill_size() || pd == 0))
+				if (/*end()*/ end_value >= obj2+size && pd >= CollectedHeap::min_fill_size())
 						_size = size+pd;
 				else
 				{
@@ -91,6 +88,13 @@ inline HeapWord* G1OffsetTableContigSpace::par_allocate_impl(size_t size,
 						pd = 0;
 						_size = size;
 				}
+}
+else
+{
+obj2 = obj;
+pd = 0;
+_size = size;
+}
 		}
 		else
 		{
