@@ -308,7 +308,7 @@ void G1MarkSweep::mark_sweep_phase4() {
 
   G1SpaceCompactClosure blk;
   g1h->heap_region_iterate(&blk);
-
+syscall(335); //cgmin tlb flush
 }
 
 void G1MarkSweep::prepare_compaction_work(G1PrepareCompactClosure* blk) {

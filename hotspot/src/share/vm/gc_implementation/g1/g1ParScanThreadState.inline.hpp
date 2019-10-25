@@ -134,7 +134,6 @@ void G1ParScanThreadState::steal_and_trim_queue(RefToScanQueueSet *task_queues) 
   while (task_queues->steal(queue_num(), hash_seed(), stolen_task)) {
     assert(verify_task(stolen_task), "sanity");
     dispatch_reference(stolen_task);
-
     // We've just processed a reference and we might have made
     // available new entries on the queues. So we have to make sure
     // we drain the queues as necessary.

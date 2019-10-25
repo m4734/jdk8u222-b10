@@ -150,11 +150,13 @@ void G1ParScanThreadState::trim_queue() {
     while (_refs->pop_overflow(ref)) {
       if (!_refs->try_push_to_taskqueue(ref)) {
         dispatch_reference(ref);
+//syscall(335);
       }
     }
 
     while (_refs->pop_local(ref)) {
       dispatch_reference(ref);
+//syscall(335);
     }
   } while (!_refs->is_empty());
 }
@@ -243,15 +245,26 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
 
   const oop obj = oop(obj_ptr);
   const oop forward_ptr = old->forward_to_atomic(obj);
+
   if (forward_ptr == NULL) {
 			//cgmin par
 			if (word_sz >= 512 && (unsigned long)old % 4096 == 0 && (unsigned long)obj_ptr % 4096 == 0) //cgmin size
 			{
-					size_t size2 = (word_sz/512)*512;
-//					printf("par %p %p %d\n",(void*)old, (void*)obj_ptr, (int)word_sz); //cgmin test
-	    Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, 2);
-			syscall(333,((HeapWord*)old),obj_ptr,(size2)*8);
+//struct timespec ts1,ts2;
+						size_t size2 = (word_sz/512)*512;
+					int rv;
+//clock_gettime(CLOCK_MONOTONIC, &ts1);
+//    Copy::aligned_disjoint_words((HeapWord*) old, (HeapWord*)obj_ptr, (size_t)512);
+			obj->set_mark(old_mark);
+
+			rv = syscall(333,((unsigned long)old),(unsigned long)obj_ptr,(size2)*8); // cgmin syscall
+//printf("xx syscall xx");
+			assert(rv == 0,"cgmin assert1")
 	    Copy::aligned_disjoint_words(((HeapWord*) old)+size2, obj_ptr+size2, word_sz-size2);
+//		    Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, word_sz);
+//    clock_gettime(CLOCK_MONOTONIC, &ts2);
+//printf("time %d %d\n",ts2.tv_sec-ts1.tv_sec,ts2.tv_nsec-ts1.tv_nsec);
+//					printf("par %p %p %d\n",(void*)old, (void*)obj_ptr, (int)word_sz); //cgmin test
 		}
 			else
 	    Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, word_sz);
@@ -303,6 +316,7 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
       _scanner.set_region(to_region);
       obj->oop_iterate_backwards(&_scanner);
     }
+
     return obj;
   } else {
     _g1_par_allocator->undo_allocation(dest_state, obj_ptr, word_sz, context);
