@@ -47,10 +47,10 @@ inline HeapWord* ThreadLocalAllocBuffer::allocate(size_t size) {
 							obj = obj2;
 					}
 			}
-			
+/*			
 			else
 					printf("cgmin tlab fail %p %p %p %u\n",obj,obj2,end(),size); //cgmin test
-					
+*/					
 	}
 
   if (pointer_delta(end(), obj) >= size) {

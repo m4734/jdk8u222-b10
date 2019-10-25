@@ -4610,11 +4610,11 @@ bool G1ParEvacuateFollowersClosure::offer_termination() {
 void G1ParEvacuateFollowersClosure::do_void() {
   G1ParScanThreadState* const pss = par_scan_state();
   pss->trim_queue();
-
+/*
   do {
     pss->steal_and_trim_queue(queues());
   } while (!offer_termination());
-
+*/
 }
 
 class G1KlassScanClosure : public KlassClosure {

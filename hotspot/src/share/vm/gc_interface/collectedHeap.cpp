@@ -265,10 +265,8 @@ HeapWord* CollectedHeap::allocate_from_tlab_slow(KlassHandle klass, Thread* thre
 
   // Retain tlab and allocate object in shared space if
   // the amount free in the tlab is too large to discard.
-printf("aaa\n");
   if (thread->tlab().free() > thread->tlab().refill_waste_limit()) {
     thread->tlab().record_slow_allocation(size);
-printf("bbb\n");
     return NULL;
   }
 
@@ -279,14 +277,12 @@ printf("bbb\n");
   thread->tlab().clear_before_allocation();
 
   if (new_tlab_size == 0) {
-printf("ccc\n");
     return NULL;
   }
 
   // Allocate a new TLAB...
   HeapWord* obj = Universe::heap()->allocate_new_tlab(new_tlab_size);
   if (obj == NULL) {
-printf("ddd\n");
     return NULL;
   }
 
@@ -306,7 +302,6 @@ printf("ddd\n");
 #endif // ASSERT
   }
   thread->tlab().fill(obj, obj + size, new_tlab_size);
-printf("eee\n");
   return obj;
 }
 

@@ -124,10 +124,10 @@ HeapWord* CollectedHeap::common_mem_allocate_noinit(KlassHandle klass, size_t si
   HeapWord* result = NULL;
   if (UseTLAB) {
     result = allocate_from_tlab(klass, THREAD, size);
-		
+		/*
 		if (size-2 >= 512) //cgmin test
 				printf("in tlab %p\n",result);
-				
+		*/		
     if (result != NULL) {
       assert(!HAS_PENDING_EXCEPTION,
              "Unexpected exception, will result in uninitialized storage");
@@ -137,10 +137,10 @@ HeapWord* CollectedHeap::common_mem_allocate_noinit(KlassHandle klass, size_t si
   bool gc_overhead_limit_was_exceeded = false;
   result = Universe::heap()->mem_allocate(size,
                                           &gc_overhead_limit_was_exceeded);
-	
+	/*
 	if (size-2 >= 512) //cgmin test
 			printf("out tlab %p\n",result);
-			
+	*/		
   if (result != NULL) {
     NOT_PRODUCT(Universe::heap()->
       check_for_non_bad_heap_word_value(result, size));
