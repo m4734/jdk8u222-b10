@@ -403,7 +403,7 @@ HeapWord* CompactibleSpace::forward(oop q, size_t size,
   // store the forwarding pointer into the mark word
   if ((HeapWord*)q != compact_top) {
 			//cgmin forward
-			if (false && size-2 >= 512) //cgmin size
+			if (size-2 >= 512) //cgmin size
 			{
 					HeapWord* ct2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(compact_top)-1)/4096+1)*4096)-2;
 if (ct2 > compact_top) // ct2 == compact_top pass

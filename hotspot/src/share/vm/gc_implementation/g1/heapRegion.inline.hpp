@@ -41,7 +41,7 @@ inline HeapWord* G1OffsetTableContigSpace::allocate_impl(size_t size,
 {
  HeapWord* obj = top();
 	//cgmin alloc
-	if (false && size-2 >= 512) //cgmin size
+	if (size-2 >= 512) //cgmin size
 	{
 			HeapWord* obj2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(obj)-1)/4096+1)*4096)-2;
 if (obj2 > obj && obj2 + size <= end_value /* end() */)
@@ -74,7 +74,7 @@ inline HeapWord* G1OffsetTableContigSpace::par_allocate_impl(size_t size,
 		HeapWord* obj2;
 		size_t pd,_size;
 		//cgmin par alloc
-		if (false && size-2 >= 512) //cgmin size
+		if (size-2 >= 512) //cgmin size
 		{
 				obj2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(obj)-1)/4096+1)*4096)-2;
 				if (obj2 > obj)
@@ -110,7 +110,7 @@ _size = size;
       //  the old top value: the exchange succeeded
       //  otherwise: the new value of the top is returned.
       if (result == obj) {
-        assert(is_ailigned(obj) && is_aligned(new_top), "checking alignment");
+        assert(is_aligned(obj) && is_aligned(new_top), "checking alignment");
 				if (obj != obj2 && pd > 0)
 						CollectedHeap::fill_with_object(obj,pd);
         return obj2;

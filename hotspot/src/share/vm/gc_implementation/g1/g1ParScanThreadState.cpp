@@ -248,7 +248,7 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
 
   if (forward_ptr == NULL) {
 			//cgmin par
-			if (false && word_sz-2 >= 512 && ((unsigned long)old+16) % 4096 == 0 && ((unsigned long)obj_ptr+16) % 4096 == 0) //cgmin size
+			if (word_sz-2 >= 512 && ((unsigned long)old+16) % 4096 == 0 && ((unsigned long)obj_ptr+16) % 4096 == 0) //cgmin size
 			{
 //struct timespec ts1,ts2;
 						size_t size2 = (word_sz-2)/512*512;

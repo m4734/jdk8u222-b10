@@ -277,7 +277,7 @@ inline HeapWord* Space::block_start(const void* p) {
       /* copy object and reinit its mark */                                     \
       assert(q != compaction_top, "everything in this pass should be moving");  \
 				/* cgmin full */ \
-				if (false && size-2 >= 512 && ((unsigned long)q + 16) % 4096 == 0 && ((unsigned long)compaction_top + 16) % 4096 == 0) /*cgmin size*/ \
+				if (size-2 >= 512 && ((unsigned long)q + 16) % 4096 == 0 && ((unsigned long)compaction_top + 16) % 4096 == 0) /*cgmin size*/ \
 				{ \
 				/*	printf("full %p %p %lu\n",q,compaction_top,size);*/  \
 						size_t size2 = (size-2)/512*512; \

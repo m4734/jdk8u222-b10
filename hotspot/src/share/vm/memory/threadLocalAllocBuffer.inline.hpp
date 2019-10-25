@@ -34,12 +34,8 @@
 inline HeapWord* ThreadLocalAllocBuffer::allocate(size_t size) {
   invariants();
   HeapWord* obj = top();
-if (obj == NULL)
-{
-	printf("???\n");
-}
 //cgmin TLAB
-	if (false && size-2 >= 512) //cgmin size
+	if (size-2 >= 512) //cgmin size
 	{
 			HeapWord* obj2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(obj)-1)/4096+1)*4096)-2;
 			if (obj2 > obj && end() >= obj2 && pointer_delta(end(), obj2) >= size)

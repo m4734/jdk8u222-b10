@@ -78,7 +78,7 @@ public:
   HeapWord* allocate(size_t word_sz) {
     HeapWord* res = _top;
 		//cgmin plab first alloc
-		if (false && word_sz-2 >= 512) //cgmin size
+		if (word_sz-2 >= 512) //cgmin size
 		{
 			HeapWord* res2;
 			HeapWord* _top2;
