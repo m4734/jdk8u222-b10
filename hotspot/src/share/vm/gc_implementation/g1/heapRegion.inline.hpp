@@ -41,19 +41,24 @@ inline HeapWord* G1OffsetTableContigSpace::allocate_impl(size_t size,
 {
  HeapWord* obj = top();
 	//cgmin alloc
-	if (size >= 512) //cgmin size
+	if (size-2 >= 512) //cgmin size
 	{
-			HeapWord* obj2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(obj)-1)/4096+1)*4096);
+			HeapWord* obj2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(obj)-1)/4096+1)*4096)-2;
+if (obj2 >= obj && obj2 + size <= end())
+{
 			size_t pd = pointer_delta(obj2,obj);
-
-			if (obj2 + size <= end() && pd >= CollectedHeap::min_fill_size())
+			if (pd >= CollectedHeap::min_fill_size())
 			{
-					CollectedHeap::fill_with_object(obj,pd);
-					if (bot)
-						_offsets.alloc_block(obj, pd); // no check?
-					obj = obj2;
+				CollectedHeap::fill_with_object(obj,pd);
+				if (bot)
+					_offsets.alloc_block(obj, pd); // no check?
+				obj = obj2;
 			}
-			
+			else if (pd == 0)
+			{
+				obj = obj2;
+			}
+}
 	}
   if (pointer_delta(end_value, obj) >= size) {
     HeapWord* new_top = obj + size;
@@ -73,11 +78,12 @@ inline HeapWord* G1OffsetTableContigSpace::par_allocate_impl(size_t size,
 		HeapWord* obj2;
 		size_t pd,_size;
 		//cgmin par alloc
-		if (size >= 512) //cgmin size
+		if (size-2 >= 512) //cgmin size
 		{
-				obj2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(obj)-1)/4096+1)*4096);
-				pd = pointer_delta(obj2,obj);
-				if (end() >= obj2+size && pd >= CollectedHeap::min_fill_size())
+				obj2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(obj)-1)/4096+1)*4096)-2;
+				if (obj2 >= obj)
+					pd = pointer_delta(obj2,obj);
+				if (obj2 >= obj && end() >= obj2+size && (pd >= CollectedHeap::min_fill_size() || pd == 0))
 						_size = size+pd;
 				else
 				{
@@ -101,7 +107,7 @@ inline HeapWord* G1OffsetTableContigSpace::par_allocate_impl(size_t size,
       //  otherwise: the new value of the top is returned.
       if (result == obj) {
         assert(is_ailigned(obj) && is_aligned(new_top), "checking alignment");
-				if (obj != obj2)
+				if (obj != obj2 && pd > 0)
 						CollectedHeap::fill_with_object(obj,pd);
         return obj2;
       }

@@ -248,19 +248,19 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
 
   if (forward_ptr == NULL) {
 			//cgmin par
-			if (word_sz >= 512 && (unsigned long)old % 4096 == 0 && (unsigned long)obj_ptr % 4096 == 0) //cgmin size
+			if (word_sz-2 >= 512 && ((unsigned long)old+16) % 4096 == 0 && ((unsigned long)obj_ptr+16) % 4096 == 0) //cgmin size
 			{
 //struct timespec ts1,ts2;
-						size_t size2 = (word_sz/512)*512;
+						size_t size2 = (word_sz-2)/512*512;
 					int rv;
 //clock_gettime(CLOCK_MONOTONIC, &ts1);
-//    Copy::aligned_disjoint_words((HeapWord*) old, (HeapWord*)obj_ptr, (size_t)512);
-			obj->set_mark(old_mark);
+    Copy::aligned_disjoint_words((HeapWord*) old, (HeapWord*)obj_ptr, (size_t)2);
+//			obj->set_mark(old_mark);
 
-			rv = syscall(333,((unsigned long)old),(unsigned long)obj_ptr,(size2)*8); // cgmin syscall
+			rv = syscall(333,((unsigned long)old+16),(unsigned long)obj_ptr+16,(size2)*8); // cgmin syscall
 //printf("xx syscall xx");
 			assert(rv == 0,"cgmin assert1")
-	    Copy::aligned_disjoint_words(((HeapWord*) old)+size2, obj_ptr+size2, word_sz-size2);
+	    Copy::aligned_disjoint_words(((HeapWord*) old)+2+size2, obj_ptr+2+size2, word_sz-2-size2);
 //		    Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, word_sz);
 //    clock_gettime(CLOCK_MONOTONIC, &ts2);
 //printf("time %d %d\n",ts2.tv_sec-ts1.tv_sec,ts2.tv_nsec-ts1.tv_nsec);

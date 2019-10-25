@@ -403,16 +403,18 @@ HeapWord* CompactibleSpace::forward(oop q, size_t size,
   // store the forwarding pointer into the mark word
   if ((HeapWord*)q != compact_top) {
 			//cgmin forward
-			if (size >= 512) //cgmin size
+			if (size-2 >= 512) //cgmin size
 			{
-					HeapWord* ct2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(compact_top)-1)/4096+1)*4096);
+					HeapWord* ct2 = (HeapWord*)(((reinterpret_cast<uintptr_t>(compact_top)-1)/4096+1)*4096)-2;
+if (ct2 >= compact_top)
 					pd = pointer_delta(ct2,compact_top);
-					if (compaction_max_size >= size+pd /*object_will_fit(size+pd)*/ && pd >= CollectedHeap::min_fill_size())
+					if (ct2 >= compact_top && compaction_max_size >= size+pd /*object_will_fit(size+pd)*/ && (pd >= CollectedHeap::min_fill_size() || pd == 0))
 					{
 							//fill object
 							
 							_obj_addr->append(compact_top);
-							_obj_size->append(pd);
+if (pd > 0)
+								_obj_size->append(pd);
 							++_obj_cnt;
 							
 							compact_top = ct2;

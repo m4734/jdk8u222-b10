@@ -277,16 +277,16 @@ inline HeapWord* Space::block_start(const void* p) {
       /* copy object and reinit its mark */                                     \
       assert(q != compaction_top, "everything in this pass should be moving");  \
 				/* cgmin full */ \
-				if (size >= 512 && (unsigned long)q % 4096 == 0 && (unsigned long)compaction_top % 4096 == 0) /*cgmin size*/ \
+				if (size-2 >= 512 && ((unsigned long)q + 16) % 4096 == 0 && ((unsigned long)compaction_top + 16) % 4096 == 0) /*cgmin size*/ \
 				{ \
 					/*printf("full %p %p %lu\n",q,compaction_top,size);*/  \
-						size_t size2 = (size/512)*512; \
+						size_t size2 = (size-2)/512*512; \
 						int rv; \
 /*oop(q)->init_mark();*/ /*cgmin header*/ \
-/*			      Copy::aligned_conjoint_words(q, compaction_top, 512);*/ \
-						rv = syscall(333,(unsigned long)q,(unsigned long)compaction_top,size2*8); /*cgmin syscall*/ \
+			      Copy::aligned_conjoint_words(q, compaction_top, 2); \
+						rv = syscall(333,(unsigned long)q+16,(unsigned long)compaction_top+16,size2*8); /*cgmin syscall*/ \
 						assert(rv == 0,"cgmin assert2"); \
-			      Copy::aligned_conjoint_words(q+size2, compaction_top+size2, size-size2); \
+			      Copy::aligned_conjoint_words(q+2+size2, compaction_top+2+size2, size-2-size2); \
 		      /*Copy::aligned_conjoint_words(q, compaction_top, size);*/                    \
 				} \
 				else \
