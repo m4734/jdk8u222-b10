@@ -116,7 +116,18 @@ template <class T> inline void G1ParScanThreadState::deal_with_reference(T* ref_
     HeapRegion* r = _g1h->heap_region_containing_raw(ref_to_scan);
     do_oop_evac(ref_to_scan, r);
   } else {
+/*
+cpu_set_t set,temp;
+sched_getaffinity(0,sizeof(cpu_set_t),&temp);
+CPU_ZERO(&set);
+CPU_SET(sched_getcpu(),&set);
+sched_setaffinity(0,sizeof(cpu_set_t),&set);
+	syscall(336); //cgmin tlb flush array failed
+*/
+//syscall(335);
     do_oop_partial_array((oop*)ref_to_scan);
+//syscall(335);
+//sched_setaffinity(0,sizeof(cpu_set_t),&temp);
   }
 }
 

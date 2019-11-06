@@ -279,12 +279,13 @@ inline HeapWord* Space::block_start(const void* p) {
 				/* cgmin full */ \
 				if (size-2 >= 512 && ((unsigned long)q + 16) % 4096 == 0 && ((unsigned long)compaction_top + 16) % 4096 == 0) /*cgmin size*/ \
 				{ \
-					printf("full %p %p %lu\n",q,compaction_top,size);  \
+/*printf("full %lu\n",size);*/ \
+				/*	printf("full %p %p %lu\n",q,compaction_top,size);*/  \
 						size_t size2 = (size-2)/512*512; \
 						int rv; \
 /*oop(q)->init_mark();*/ /*cgmin header*/ \
 			      Copy::aligned_conjoint_words(q, compaction_top, 2); \
-						rv = syscall(333,(unsigned long)q+16,(unsigned long)compaction_top+16,size2*8); /*cgmin syscall*/ \
+						rv = syscall(333,(unsigned long)q+16,(unsigned long)compaction_top+16,size2*8,1); /*cgmin syscall*/ \
 						assert(rv == 0,"cgmin assert2"); \
 			      Copy::aligned_conjoint_words(q+2+size2, compaction_top+2+size2, size-2-size2); \
 		      /*Copy::aligned_conjoint_words(q, compaction_top, size);*/                    \

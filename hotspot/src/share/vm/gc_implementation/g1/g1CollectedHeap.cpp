@@ -4156,11 +4156,11 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
         _allocator->init_gc_alloc_regions(evacuation_info);
 
         // Actually do the work...
-//printf("\nininin\n");
+//printf("\nininin\n"); //cgmin test
         evacuate_collection_set(evacuation_info);
 
 syscall(335); //cgmin tlb flush
-//printf("\noutoutout\n");
+//printf("\noutoutout\n"); //cgmin test
         free_collection_set(g1_policy()->collection_set(), evacuation_info);
 
         eagerly_reclaim_humongous_regions();
@@ -4610,11 +4610,11 @@ bool G1ParEvacuateFollowersClosure::offer_termination() {
 void G1ParEvacuateFollowersClosure::do_void() {
   G1ParScanThreadState* const pss = par_scan_state();
   pss->trim_queue();
-/*
+
   do {
     pss->steal_and_trim_queue(queues());
   } while (!offer_termination());
-*/
+
 }
 
 class G1KlassScanClosure : public KlassClosure {

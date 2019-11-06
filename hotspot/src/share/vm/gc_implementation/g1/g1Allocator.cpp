@@ -124,6 +124,7 @@ HeapWord* G1ParGCAllocator::allocate_direct_or_new_plab(InCSetState dest,
 
 		//cgmin no 4k
 		//cgmin here but pass
+//printf("a d o n p %lu\n",gclab_word_size); //cgmin test
     HeapWord* buf = _g1h->par_allocate_during_gc(dest, gclab_word_size, context);
     if (buf == NULL) {
       return NULL; // Let caller handle allocation failure.

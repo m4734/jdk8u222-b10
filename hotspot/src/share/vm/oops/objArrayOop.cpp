@@ -31,7 +31,16 @@
                                                                                    \
 int objArrayOopDesc::oop_iterate_range(OopClosureType* blk, int start, int end) {  \
   SpecializationStats::record_call();                                              \
-  return ((ObjArrayKlass*)klass())->oop_oop_iterate_range##nv_suffix(this, blk, start, end); \
+/*cpu_set_t set,temp;*/ \
+/*sched_getaffinity(0,sizeof(cpu_set_t),&temp);*/ \
+/*CPU_ZERO(&set);*/ \
+/*CPU_SET(sched_getcpu(),&set);*/ \
+/*sched_setaffinity(0,sizeof(cpu_set_t),&set);*/ \
+/*	syscall(336);*/ /* cgmin tlb flush array failed */ \
+/*int rv =  ((ObjArrayKlass*)klass())->oop_oop_iterate_range##nv_suffix(this, blk, start, end);*/\
+  return ((ObjArrayKlass*)klass())->oop_oop_iterate_range##nv_suffix(this, blk, start, end);  \
+/*sched_setaffinity(0,sizeof(cpu_set_t),&temp);*/ \
+/*return rv;*/ \
 }
 
 ALL_OOP_OOP_ITERATE_CLOSURES_1(ObjArrayOop_OOP_ITERATE_DEFN)

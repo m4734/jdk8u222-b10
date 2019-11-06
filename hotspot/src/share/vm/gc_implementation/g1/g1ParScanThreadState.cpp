@@ -243,6 +243,8 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
   // We're going to allocate linearly, so might as well prefetch ahead.
   Prefetch::write(obj_ptr, PrefetchCopyIntervalInBytes);
 
+int oa = old->is_objArray(),sc=0; //cgmin test
+
   const oop obj = oop(obj_ptr);
   const oop forward_ptr = old->forward_to_atomic(obj);
 
@@ -250,24 +252,73 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
 			//cgmin par
 			if (word_sz-2 >= 512 && ((unsigned long)old+16) % 4096 == 0 && ((unsigned long)obj_ptr+16) % 4096 == 0) //cgmin size
 			{
+sc = 1;
+//printf("par  %lu\n",word_sz);
+/*
+if (oa)
+{
+//		    Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, word_sz);
+//    if (ol >= ParGCArrayScanChunk) //cgmin array
+//      arrayOop(old)->set_length(0);
+printf("a %d %d %d %d\n",word_sz,ol,loib,sizeof(int));
+}
+else
+	printf("o %d\n",word_sz);
+*/
 //struct timespec ts1,ts2;
 						size_t size2 = (word_sz-2)/512*512;
-					int rv;
+//					int rv;
 //clock_gettime(CLOCK_MONOTONIC, &ts1);
-    Copy::aligned_disjoint_words((HeapWord*) old, (HeapWord*)obj_ptr, (size_t)2);
-//			obj->set_mark(old_mark);
+//	if (old->is_objArray())
+//	    Copy::aligned_disjoint_words((HeapWord*) old, (HeapWord*)obj_ptr, (size_t)3); // array 3
+//	else
+//	    Copy::aligned_disjoint_words((HeapWord*) old, (HeapWord*)obj_ptr, (size_t)2);
 
-			rv = syscall(333,((unsigned long)old+16),(unsigned long)obj_ptr+16,(size2)*8); // cgmin syscall
-//printf("xx syscall xx");
-			assert(rv == 0,"cgmin assert1")
-	    Copy::aligned_disjoint_words(((HeapWord*) old)+2+size2, obj_ptr+2+size2, word_sz-2-size2);
+    if (oa)// && ol >= ParGCArrayScanChunk) 
+{
+//printf("par a%lu\n",word_sz);
+
+	    Copy::aligned_disjoint_words((HeapWord*) old, (HeapWord*)obj_ptr, (size_t)2);
+			syscall(333,((unsigned long)old+16),(unsigned long)obj_ptr+16,(size2)*8,1); // cgmin syscall
+//syscall(335);
 //		    Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, word_sz);
+	    Copy::aligned_disjoint_words(((HeapWord*) old)+2+size2, obj_ptr+2+size2, word_sz-2-size2);
+
+}
+else
+{
+//	printf("par o%lu\n",word_sz);
+//		syscall(333,((unsigned long)old+16),(unsigned long)obj_ptr+16,(size2)*8,0); // cgmin syscall
+
+	    Copy::aligned_disjoint_words((HeapWord*) old, (HeapWord*)obj_ptr, (size_t)2);
+
+		syscall(333,((unsigned long)old+16),(unsigned long)obj_ptr+16,(size2)*8,0); // cgmin syscall
+
+//		    Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, word_sz);
+
+//			assert(rv == 0,"cgmin assert1")
+	    Copy::aligned_disjoint_words(((HeapWord*) old)+2+size2, obj_ptr+2+size2, word_sz-2-size2);
+}
+/*
+if (oa)
+{
+//printf("%d %d %d %d\n",l1,arrayOop(old)->length(),l2,arrayOop(obj_ptr)->length());
+//printf("a %d %d %d %d\n",word_sz,ol,loib,sizeof(int));
+if (arrayOop(old)->length() != arrayOop(obj_ptr)->length())
+printf("fff\n");
+}
+*/
+
 //    clock_gettime(CLOCK_MONOTONIC, &ts2);
 //printf("time %d %d\n",ts2.tv_sec-ts1.tv_sec,ts2.tv_nsec-ts1.tv_nsec);
 //					printf("par %p %p %d\n",(void*)old, (void*)obj_ptr, (int)word_sz); //cgmin test
+//printf("%d\n",word_sz);
 		}
 			else
+{
+//printf("%d ",word_sz);
 	    Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, word_sz);
+}
 
     if (dest_state.is_young()) {
       if (age < markOopDesc::max_age) {
@@ -289,6 +340,7 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
     }
 
     if (G1StringDedup::is_enabled()) {
+printf("cgmin x\n");//test
       const bool is_from_young = state.is_young();
       const bool is_to_young = dest_state.is_young();
       assert(is_from_young == _g1h->heap_region_containing_raw(old)->is_young(),
@@ -304,10 +356,13 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
     size_t* const surv_young_words = surviving_young_words();
     surv_young_words[young_index] += word_sz;
 
-    if (obj->is_objArray() && arrayOop(obj)->length() >= ParGCArrayScanChunk) {
-      // We keep track of the next start index in the length field of
+    if (sc == 0 && obj->is_objArray() && arrayOop(obj)->length() >= ParGCArrayScanChunk) {
+//    if (obj->is_objArray() && ol >= ParGCArrayScanChunk) { //cgmin array
+     // We keep track of the next start index in the length field of
       // the to-space object. The actual length can be found in the
       // length field of the from-space object.
+//if (sc)
+//printf("sc\n");
       arrayOop(obj)->set_length(0);
       oop* old_p = set_partial_array_mask(old);
       push_on_queue(old_p);
@@ -316,7 +371,22 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
       _scanner.set_region(to_region);
       obj->oop_iterate_backwards(&_scanner);
     }
+/*
+	if (sc) //cgmin sc
+{
+						size_t size2 = (word_sz-2)/512*512;
+//if (obj->is_objArray() && arrayOop(obj)->length() >= ParGCArrayScanChunk)
+//		arrayOop(old)->set_length(0);
 
+//int t = arrayOop(old)->length();
+//		syscall(333,((unsigned long)old+16),(unsigned long)obj_ptr+16,(size2)*8,0); // cgmin syscall
+//printf("%d %d\n",t,arrayOop(old)->length());
+		    Copy::aligned_disjoint_words(((HeapWord*) old)+3, obj_ptr+3, word_sz-3);
+//		    Copy::aligned_disjoint_words(((HeapWord*) old)+3, obj_ptr+3, size2-1);
+//    Copy::aligned_disjoint_words(((HeapWord*) old)+2+size2, obj_ptr+2+size2, word_sz-2-size2);
+
+}
+*/
     return obj;
   } else {
     _g1_par_allocator->undo_allocation(dest_state, obj_ptr, word_sz, context);
