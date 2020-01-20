@@ -116,6 +116,7 @@ template <class T> inline void G1ParScanThreadState::deal_with_reference(T* ref_
     HeapRegion* r = _g1h->heap_region_containing_raw(ref_to_scan);
     do_oop_evac(ref_to_scan, r);
   } else {
+//printf("fff2\n"); //cgmin check
     do_oop_partial_array((oop*)ref_to_scan);
   }
 }

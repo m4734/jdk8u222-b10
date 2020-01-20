@@ -122,6 +122,10 @@ HeapWord* CollectedHeap::common_mem_allocate_noinit(KlassHandle klass, size_t si
   }
 
   HeapWord* result = NULL;
+/*
+if (size >= 512) //cgmin check
+	printf("s %d\n",size);
+*/
   if (UseTLAB) {
     result = allocate_from_tlab(klass, THREAD, size);
     if (result != NULL) {

@@ -288,7 +288,9 @@ HeapRegion::HeapRegion(uint hrm_index,
 {
   _rem_set = new HeapRegionRemSet(sharedOffsetArray, this);
   assert(HeapRegionRemSet::num_par_rem_sets() > 0, "Invariant.");
-
+_copy_sum1 = _copy_sum2 = _time_sum1 = _time_sum2 = 0;
+//old_s = old_d = NULL; //cgmin check
+//word = word_sum = cc = cnt = 0;
   initialize(mr);
 }
 

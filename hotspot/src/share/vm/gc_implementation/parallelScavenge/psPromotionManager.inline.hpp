@@ -72,7 +72,6 @@ inline void PSPromotionManager::claim_or_forward_depth(T* p) {
 template<bool promote_immediately>
 oop PSPromotionManager::copy_to_survivor_space(oop o) {
   assert(PSScavenge::should_scavenge(&o), "Sanity");
-
   oop new_obj = NULL;
 
   // NOTE! We must be very careful with any methods that access the mark

@@ -274,7 +274,18 @@ void G1MarkSweep::mark_sweep_phase3() {
 
 class G1SpaceCompactClosure: public HeapRegionClosure {
 public:
-  G1SpaceCompactClosure() {}
+int _copy_sum1,_copy_sum2,_time_sum1,_time_sum2; //cgmin check
+int word,word_sum,cc,cnt;
+  G1SpaceCompactClosure() {
+_copy_sum1=_copy_sum2=_time_sum1=_time_sum2=0;
+word = word_sum = cc = cnt = 0;
+}
+  ~G1SpaceCompactClosure() {
+if (_time_sum1 + _time_sum2 > 0)
+printf("full\nsize %d time %d\nsize %d time %d\nsize %d time %d\n",_copy_sum1,_time_sum1,_copy_sum2,_time_sum2,_copy_sum1+_copy_sum2,_time_sum1+_time_sum2); //cgmin check
+
+//printf("%d\nfs %d %d %d\n",word,word_sum,cc,cnt);
+}
 
   bool doHeapRegion(HeapRegion* hr) {
     if (hr->isHumongous()) {
@@ -288,7 +299,31 @@ public:
         hr->reset_during_compaction();
       }
     } else {
+hr->_copy_sum1 = hr->_copy_sum2 = hr->_time_sum1 = hr->_time_sum2 = 0;
+
       hr->compact();
+/*
+if (_time_sum1 + _time_sum2 > 0)
+printf("full h\nsize %d time %d\nsize %d time %d\nsize %d time %d\n",_copy_sum1,_time_sum1,_copy_sum2,_time_sum2,_copy_sum1+_copy_sum2,_time_sum1+_time_sum2); //cgmin check
+*/
+_copy_sum1+=hr->_copy_sum1;
+_copy_sum2+=hr->_copy_sum2;
+_time_sum1+=hr->_time_sum1;
+_time_sum2+=hr->_time_sum2;
+hr->_copy_sum1 = hr->_copy_sum2 = hr->_time_sum1 = hr->_time_sum2 = 0;
+
+//printf("%d\nfs %d %d %d\n",word,word_sum,cc,cnt);
+
+//word+= hr->word;
+//word_sum+= hr->word_sum;
+//cc+= hr->cc;
+//cnt+= hr->cnt;
+//printf("%d\nfs %d %d %d\n",word,word_sum,cc,cnt);
+
+//hr->_copy_sum1=hr->_copy_sum2=hr->_time_sum1=hr->_time_sum2=0; //cgmin check;
+
+//hr->word = hr->word_sum = hr->cc = hr->cnt = 0;
+
     }
     return false;
   }
@@ -307,8 +342,14 @@ void G1MarkSweep::mark_sweep_phase4() {
   GenMarkSweep::trace("4");
 
   G1SpaceCompactClosure blk;
+
+struct timespec ts1,ts2; //cgmin check
+clock_gettime(CLOCK_MONOTONIC,&ts1);
+
   g1h->heap_region_iterate(&blk);
 
+clock_gettime(CLOCK_MONOTONIC,&ts2);
+printf("full %lu\n",(ts2.tv_sec-ts1.tv_sec)*1000000000+ts2.tv_nsec-ts1.tv_nsec); //cgmin check
 }
 
 void G1MarkSweep::prepare_compaction_work(G1PrepareCompactClosure* blk) {

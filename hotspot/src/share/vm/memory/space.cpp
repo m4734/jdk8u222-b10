@@ -287,6 +287,9 @@ void Space::clear(bool mangle_space) {
 ContiguousSpace::ContiguousSpace(): CompactibleSpace(), _top(NULL),
     _concurrent_iteration_safe_limit(NULL) {
   _mangler = new GenSpaceMangler(this);
+_copy_sum1=_copy_sum2=_time_sum1=_time_sum2=0; //cgmin check;
+//word=word_sum=cc=cnt=0;
+//old_s = old_d = NULL;
 }
 
 ContiguousSpace::~ContiguousSpace() {
