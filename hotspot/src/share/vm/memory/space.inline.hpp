@@ -39,6 +39,12 @@ inline HeapWord* Space::block_start(const void* p) {
   /* Compute the new addresses for the live objects and store it in the mark \
    * Used by universe::mark_sweep_phase2()                                   \
    */                                                                        \
+\
+/*//cgmin*/ \
+  groupStart->clear();\
+  groupSize->clear();\
+  groupNum = 0;\
+\
   HeapWord* compact_top; /* This is where we are currently compacting to. */ \
                                                                              \
   /* We're sure to be here before any objects are compacted into this        \
@@ -74,6 +80,11 @@ inline HeapWord* Space::block_start(const void* p) {
                                                                              \
   HeapWord* q = bottom();                                                    \
   HeapWord* t = scan_limit();                                                \
+\
+  size_t cs = 0;\
+  HeapWord* new_start = 0;\
+  HeapWord* ct=0;\
+\
                                                                              \
   HeapWord*  end_of_live= q;    /* One byte beyond the last byte of the last \
                                    live object. */                           \
@@ -93,9 +104,31 @@ inline HeapWord* Space::block_start(const void* p) {
       /* prefetch beyond q */                                                \
       Prefetch::write(q, interval);                                          \
       size_t size = block_size(q);                                           \
+/*      ct = compact_top;*/\
       compact_top = cp->space->forward(oop(q), size, cp, compact_top);       \
+\
+if (true)\
+{\
+      if (end_of_live != q || ct+size != compact_top) \
+      {\
+        if (cs >= 512) /*//cgmin512*/ \
+        {\
+          groupStart->append(new_start);\
+          groupSize->append(cs);\
+          groupNum++;\
+/*     printf("cgmin0 %p %lu %d\n",new_start,cs,groupNum);*/\
+       }\
+        new_start = q; \
+        cs = size;\
+      }\
+      else\
+        cs+=size; \
+        ct = compact_top;\
+        }\
+\
       q += size;                                                             \
       end_of_live = q;                                                       \
+      \
     } else {                                                                 \
       /* run over all the contiguous dead objects */                         \
       HeapWord* end = q;                                                     \
@@ -111,7 +144,27 @@ inline HeapWord* Space::block_start(const void* p) {
       if (allowed_deadspace > 0 && q == compact_top) {                       \
         size_t sz = pointer_delta(end, q);                                   \
         if (insert_deadspace(allowed_deadspace, q, sz)) {                    \
+      /*  ct = compact_top;*/\
           compact_top = cp->space->forward(oop(q), sz, cp, compact_top);     \
+          \
+          if (true) { \
+      if (end_of_live != q || ct+sz != compact_top) \
+      {\
+        if (cs >= 512) /*//cgmin512*/ \
+        {\
+          groupStart->append(new_start);\
+          groupSize->append(cs);\
+          groupNum++;\
+/*     printf("cgmin0 %p %lu %d\n",new_start,cs,groupNum);*/\
+       }\
+        new_start = q; \
+        cs = sz;\
+      }\
+      else\
+        cs+=sz; \
+        ct = compact_top;\
+        }\
+\
           q = end;                                                           \
           end_of_live = end;                                                 \
           continue;                                                          \
@@ -154,6 +207,15 @@ inline HeapWord* Space::block_start(const void* p) {
                                                                              \
   /* save the compaction_top of the compaction space. */                     \
   cp->space->set_compaction_top(compact_top);                                \
+\
+  if (cs >= 512) /*//cgmin512*/ \
+  {\
+    groupStart->append(new_start);\
+    groupSize->append(cs);\
+    groupNum++;\
+    /*printf("cgmin0 %p %lu %d\n",new_start,cs,groupNum);*/\
+  }\
+\
 }
 
 #define SCAN_AND_ADJUST_POINTERS(adjust_obj_size) {                             \
@@ -229,7 +291,10 @@ inline HeapWord* Space::block_start(const void* p) {
   HeapWord*       q = bottom();                                                 \
   HeapWord* const t = _end_of_live;                                             \
   debug_only(HeapWord* prev_q = NULL);                                          \
-                                                                                \
+\
+int sss,bbb;\
+sss = bbb = 0; \
+\
   if (q < t && _first_dead > q &&                                               \
       !oop(q)->is_gc_marked()) {                                                \
     debug_only(                                                                 \
@@ -257,6 +322,21 @@ inline HeapWord* Space::block_start(const void* p) {
                                                                                 \
   const intx scan_interval = PrefetchScanIntervalInBytes;                       \
   const intx copy_interval = PrefetchCopyIntervalInBytes;                       \
+  \
+/*//cgmin*/\
+  HeapWord* gs=0;\
+/*  HeapWord* ge=0;*/\
+  HeapWord* qe;\
+  HeapWord* qi;\
+  size_t gl=0;\
+  int gi=0;\
+  if (gi < groupNum)\
+  {\
+    gs = groupStart->at(gi);\
+    gl = groupSize->at(gi);\
+/*  printf("cgmin1 %p %p %lu\n",gs,ge,gl);*/\
+  }\
+  \
   while (q < t) {                                                               \
     if (!oop(q)->is_gc_marked()) {                                              \
       /* mark is pointer to next marked oop */                                  \
@@ -276,12 +356,63 @@ inline HeapWord* Space::block_start(const void* p) {
                                                                                 \
       /* copy object and reinit its mark */                                     \
       assert(q != compaction_top, "everything in this pass should be moving");  \
-      Copy::aligned_conjoint_words(q, compaction_top, size);                    \
+\
+      /*//cgmin*/\
+      if (gs == q)\
+      {\
+/*      bbb+=gl;*/\
+/*        Copy::aligned_conjoint_words(q, compaction_top, gl)*/;                    \
+/*printf("cgmin2 %p - %p / %p - %p %lu\n",q,q+gl,compaction_top,compaction_top+gl,gl);*/\
+\
+if (true) { \
+qe = q+gl;\
+qi = q;\
+while(qi < qe)\
+{\
+      oop(qi)->init_mark();                                         \
+      qi+=obj_size(qi);\
+}\
+}\
+        Copy::aligned_conjoint_words(q, compaction_top, gl);                    \
+q+=gl;\
+\
+/*\
+HeapWord* qq = q;\
+HeapWord* cc = compaction_top;\
+ce = q + gl;\
+while (qq < ce)\
+{\
+if (cc != (HeapWord*)oop(qq)->forwardee())\
+  printf("cgmin error\n");\
+  cc+=obj_size(qq);\
+qq+=obj_size(qq);\
+}\
+*/\
+        gi++;\
+        if (gi < groupNum)\
+        {\
+/*        ge = gs + gl;*/\
+     gs = groupStart->at(gi);\
+    gl = groupSize->at(gi);\
+/*  printf("cgmin1 %p %p %lu\n",gs,ge,gl);*/\
+        }\
+        else\
+          gs = /*ge =*/ _end_of_live;\
+       /*   continue;*/\
+      }\
+/*      else if (ge <= q )*/\
+else\
+      {\
+/*      sss+=size;*/\
+        Copy::aligned_conjoint_words(q, compaction_top, size);                    \
+/*        printf("copy %p - %p / %p - %p %lu\n",q,q+size,compaction_top,compaction_top+size,size);*/\
+     /*   }*/\
       oop(compaction_top)->init_mark();                                         \
       assert(oop(compaction_top)->klass() != NULL, "should have a class");      \
                                                                                 \
       debug_only(prev_q = q);                                                   \
       q += size;                                                                \
+      }\
     }                                                                           \
   }                                                                             \
                                                                                 \
@@ -299,6 +430,7 @@ inline HeapWord* Space::block_start(const void* p) {
   } else {                                                                      \
     if (ZapUnusedHeapArea) mangle_unused_area();                                \
   }                                                                             \
+/*  printf("bbb %d\nsss %d\n",bbb,sss);*/\
 }
 
 inline HeapWord* OffsetTableContigSpace::allocate(size_t size) {

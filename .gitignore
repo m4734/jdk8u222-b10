@@ -15,7 +15,9 @@ NashornProfile.txt
 **/JTwork/**
 dacapo*
 tags
-cscope*
+/cscope.files
+/cscope.out
 dacapo*
 SPEC*
 *.log
+cscope*

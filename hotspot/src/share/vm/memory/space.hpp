@@ -349,7 +349,16 @@ private:
 
 public:
   CompactibleSpace() :
-   _compaction_top(NULL), _next_compaction_space(NULL) {}
+   _compaction_top(NULL), _next_compaction_space(NULL) {
+   //cgmin
+    groupStart = new (ResourceObj::C_HEAP, mtGC) GrowableArray<HeapWord*>(0,true);
+    groupSize = new  (ResourceObj::C_HEAP, mtGC) GrowableArray<size_t>(0,true);
+  }
+  ~CompactibleSpace()
+  {
+    delete groupStart;
+    delete groupSize;
+  }
 
   virtual void initialize(MemRegion mr, bool clear_space, bool mangle_space);
   virtual void clear(bool mangle_space);
@@ -426,6 +435,13 @@ public:
   virtual size_t adjust_object_size_v(size_t size) const { return size; }
 
 protected:
+
+//cgmin
+  GrowableArray<HeapWord*>* groupStart = NULL;
+  GrowableArray<size_t>* groupSize = NULL;
+  int groupNum;
+
+
   // Used during compaction.
   HeapWord* _first_dead;
   HeapWord* _end_of_live;
