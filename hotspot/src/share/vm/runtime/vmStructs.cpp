@@ -461,7 +461,11 @@ typedef TwoOopHashtable<Symbol*, mtClass>     SymbolTwoOopHashtable;
      static_field(Universe,                    _narrow_oop._use_implicit_null_checks,         bool)                                  \
      static_field(Universe,                    _narrow_klass._base,                           address)                               \
      static_field(Universe,                    _narrow_klass._shift,                          int)                                   \
-                                                                                                                                     \
+     \
+ static_field(Universe,                    _hrm,                                HeapRegionManager*)                        \
+                                                                                                                                    \
+/*     static_field(HeapRegionManager,                    _hrm_g,                                HeapRegionManager*)                        */\
+/*//cgmin static field*/                                                                                                                                     \
   /******/                                                                                                                           \
   /* os */                                                                                                                           \
   /******/                                                                                                                           \

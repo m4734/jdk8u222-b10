@@ -80,6 +80,9 @@
 #include "gc_implementation/g1/g1CollectedHeap.inline.hpp"
 #include "gc_implementation/g1/g1CollectorPolicy_ext.hpp"
 #include "gc_implementation/parallelScavenge/parallelScavengeHeap.hpp"
+
+//#include "gc_implementation/g1/heapRegionManager.hpp" //cgmin
+
 #endif // INCLUDE_ALL_GCS
 
 PRAGMA_FORMAT_MUTE_WARNINGS_FOR_GCC
@@ -151,6 +154,7 @@ size_t          Universe::_heap_capacity_at_last_gc;
 size_t          Universe::_heap_used_at_last_gc = 0;
 
 CollectedHeap*  Universe::_collectedHeap = NULL;
+HeapRegionManager* Universe::_hrm = NULL; //cgmin
 
 NarrowPtrStruct Universe::_narrow_oop = { NULL, 0, true };
 NarrowPtrStruct Universe::_narrow_klass = { NULL, 0, true };
@@ -811,6 +815,8 @@ jint Universe::initialize_heap() {
     g1p->initialize_all();
     G1CollectedHeap* g1h = new G1CollectedHeap(g1p);
     Universe::_collectedHeap = g1h;
+    
+    Universe::_hrm = g1h->hrm(); //cgmin
 #else  // INCLUDE_ALL_GCS
     fatal("UseG1GC not supported in java kernel vm.");
 #endif // INCLUDE_ALL_GCS
@@ -1191,6 +1197,9 @@ bool universe_post_init() {
   MemoryService::add_metaspace_memory_pools();
 
   MemoryService::set_universe_heap(Universe::_collectedHeap);
+
+//  MemoryService::set_universe_heap(Universe::_hrm); //cgmin
+
 #if INCLUDE_CDS
   if (UseSharedSpaces) {
     SharedClassUtil::initialize(CHECK_false);

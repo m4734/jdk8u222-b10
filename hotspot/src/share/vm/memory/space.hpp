@@ -335,6 +335,18 @@ public:
     gen(g), space(NULL), threshold(0) {}
 };
 
+struct COG //cgmin continous object group
+{
+  HeapWord* start;
+  HeapWord* forward;
+  HeapWord* end;
+  unsigned long length;
+  unsigned long align_waste;
+
+//  HeapWord* next; // next live object or end?
+};
+
+
 // A space that supports compaction operations.  This is usually, but not
 // necessarily, a space that is normally contiguous.  But, for example, a
 // free-list-based space whose normal collection is a mark-sweep without
@@ -350,14 +362,23 @@ private:
 public:
   CompactibleSpace() :
    _compaction_top(NULL), _next_compaction_space(NULL) {
-   //cgmin
+   //cgmin region init
+   /*
     groupStart = new (ResourceObj::C_HEAP, mtGC) GrowableArray<HeapWord*>(0,true);
     groupSize = new  (ResourceObj::C_HEAP, mtGC) GrowableArray<size_t>(0,true);
+    */
+    _cog_array = new (ResourceObj::C_HEAP, mtGC) GrowableArray<COG>(8,true);
   }
   ~CompactibleSpace()
   {
-    delete groupStart;
-    delete groupSize;
+  //cgmin space free
+//    delete groupStart;
+//    delete groupSize;
+      if (_pnMap != NULL)
+        os::free(_pnMap);
+      if (_dvMap != NULL)
+        os::free(_dvMap);
+      delete _cog_array;
   }
 
   virtual void initialize(MemRegion mr, bool clear_space, bool mangle_space);
@@ -431,16 +452,28 @@ public:
   virtual HeapWord* forward(oop q, size_t size, CompactPoint* cp,
                     HeapWord* compact_top);
 
+  virtual HeapWord* forward_no_opt(oop q, size_t size, CompactPoint* cp, HeapWord* compact_top,bool opt); //cgmin
+
   // Return a size with adjusments as required of the space.
   virtual size_t adjust_object_size_v(size_t size) const { return size; }
 
-protected:
+public:
 
-//cgmin
+//cgmin region variables
+/*
   GrowableArray<HeapWord*>* groupStart = NULL;
   GrowableArray<size_t>* groupSize = NULL;
   int groupNum;
+  */
+  GrowableArray<COG>* _cog_array = NULL;
+  unsigned long* _pnMap;
+  unsigned long* _dvMap;
+  unsigned long _b4;
+  unsigned long _mapMax;
 
+  HeapWord* occupy(size_t size,CompactPoint* cp,HeapWord* compact_top); //cgmin occupy
+
+protected:
 
   // Used during compaction.
   HeapWord* _first_dead;

@@ -53,6 +53,8 @@ void HeapRegionManager::initialize(G1RegionToSpaceMapper* heap_storage,
 
   _available_map.resize(_regions.length(), false);
   _available_map.clear();
+
+//  HeapRegionManager::_hrm_g = this;//cgmin
 }
 
 bool HeapRegionManager::is_available(uint region) const {

@@ -370,12 +370,79 @@ void CompactibleSpace::initialize(MemRegion mr,
   Space::initialize(mr, clear_space, mangle_space);
   set_compaction_top(bottom());
   _next_compaction_space = NULL;
+
+//cgmin region init alloc
+  _b4 = (unsigned long)bottom()/4096*4096;
+  _mapMax = ((unsigned long)end()-_b4)/4096+1;
+
+  _pnMap = (unsigned long*)os::malloc(_mapMax*sizeof(unsigned long),mtInternal);
+  _dvMap = (unsigned long*)os::malloc(_mapMax*sizeof(unsigned long),mtInternal);
+
+  unsigned long i;
+  for (i=0;i<_mapMax;i++)
+    _pnMap[i] = 0;
 }
 
 void CompactibleSpace::clear(bool mangle_space) {
   Space::clear(mangle_space);
   _compaction_top = bottom();
 }
+
+HeapWord* CompactibleSpace::occupy(size_t size,CompactPoint* cp,HeapWord* compact_top) //cgmin
+{
+  compact_top += size;
+
+  if (compact_top > cp->threshold)
+    cp->threshold =
+      cp->space->cross_threshold(compact_top - size, compact_top);
+
+  return compact_top;
+}
+
+HeapWord* CompactibleSpace::forward_no_opt(oop q, size_t size,
+                                    CompactPoint* cp, HeapWord* compact_top,bool opt) {
+  // q is alive
+  // First check if we should switch compaction space
+  assert(this == cp->space, "'this' should be current compaction space.");
+  size_t compaction_max_size = pointer_delta(end(), compact_top);
+  while (size > compaction_max_size) {
+    // switch to next compaction space
+    cp->space->set_compaction_top(compact_top);
+    cp->space = cp->space->next_compaction_space();
+    if (cp->space == NULL) {
+      cp->gen = GenCollectedHeap::heap()->prev_gen(cp->gen);
+      assert(cp->gen != NULL, "compaction must succeed");
+      cp->space = cp->gen->first_compaction_space();
+      assert(cp->space != NULL, "generation must have a first compaction space");
+    }
+    compact_top = cp->space->bottom();
+    cp->space->set_compaction_top(compact_top);
+    cp->threshold = cp->space->initialize_threshold();
+    compaction_max_size = pointer_delta(cp->space->end(), compact_top);
+  }
+
+  // store the forwarding pointer into the mark word
+  if ((HeapWord*)q != compact_top || !opt) {
+    q->forward_to(oop(compact_top));
+    assert(q->is_gc_marked(), "encoding the pointer should preserve the mark");
+  } else {
+    // if the object isn't moving we can just set the mark to the default
+    // mark and handle it specially later on.
+    q->init_mark();
+    assert(q->forwardee() == NULL, "should be forwarded to NULL");
+  }
+
+  compact_top += size;
+
+  // we need to update the offset table so that the beginnings of objects can be
+  // found during scavenge.  Note that we are updating the offset table based on
+  // where the object will be once the compaction phase finishes.
+  if (compact_top > cp->threshold)
+    cp->threshold =
+      cp->space->cross_threshold(compact_top - size, compact_top);
+  return compact_top;
+}
+
 
 HeapWord* CompactibleSpace::forward(oop q, size_t size,
                                     CompactPoint* cp, HeapWord* compact_top) {

@@ -110,6 +110,8 @@ void G1MarkSweep::invoke_at_safepoint(ReferenceProcessor* rp,
 
   mark_sweep_phase4();
 
+  syscall(335); //cgmin syscall
+
   clock_gettime(CLOCK_MONOTONIC,&ts5);
 
   GenMarkSweep::restore_marks();

@@ -25,6 +25,11 @@
 #ifndef SHARE_VM_GC_IMPLEMENTATION_SHARED_MARKSWEEP_INLINE_HPP
 #define SHARE_VM_GC_IMPLEMENTATION_SHARED_MARKSWEEP_INLINE_HPP
 
+//#include "gc_implementation/g1/g1CollectedHeap.hpp" /* //cgmin adjust*/
+#include "gc_implementation/g1/heapRegion.hpp"
+#include "gc_implementation/g1/heapRegionManager.hpp"
+#include "gc_implementation/g1/heapRegionManager.inline.hpp"
+
 #include "gc_implementation/shared/markSweep.hpp"
 #include "gc_interface/collectedHeap.hpp"
 #include "utilities/stack.inline.hpp"
@@ -93,6 +98,26 @@ template <class T> inline void MarkSweep::adjust_pointer(T* p) {
   T heap_oop = oopDesc::load_heap_oop(p);
   if (!oopDesc::is_null(heap_oop)) {
     oop obj     = oopDesc::decode_heap_oop_not_null(heap_oop);
+
+//cgmin adjust pointer
+
+    HeapRegion* hr = Universe::hrm()->addr_to_region((HeapWord*)(obj));
+//    HeapRegion* hr = G1CollectedHeap::heap()->hrm()->addr_to_region((HeapWord*)(obj));
+//    HeapRegion* hr = HeapRegionManager::hrm_g()->addr_to_region((HeapWord*)(obj));
+//    HeapRegion* hr = NULL;
+
+    unsigned long *pnMap = hr->_pnMap;
+    int mapIndex = ((unsigned long)(HeapWord*)obj - hr->_b4)/4096;
+    if (pnMap[mapIndex] != 0)
+    {
+      unsigned long *dvMap = hr->_dvMap;
+      if (pnMap[mapIndex] == 1)
+        oopDesc::encode_store_heap_oop_not_null(p,oop((HeapWord*)obj + dvMap[mapIndex]));
+      else if (pnMap[mapIndex] == 2)
+        oopDesc::encode_store_heap_oop_not_null(p,oop((HeapWord*)obj - dvMap[mapIndex]));
+      return;
+    }
+
     oop new_obj = oop(obj->mark()->decode_pointer());
     assert(new_obj != NULL ||                         // is forwarding ptr?
            obj->mark() == markOopDesc::prototype() || // not gc marked?

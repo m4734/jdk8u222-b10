@@ -1251,6 +1251,9 @@ public:
 
  public:
 
+//cgmin hrm
+  HeapRegionManager* hrm() { return &_hrm; }
+
   inline InCSetState in_cset_state(const oop obj);
 
   // Return "TRUE" iff the given object address is in the reserved

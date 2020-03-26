@@ -40,6 +40,7 @@
 class CollectedHeap;
 class DeferredObjAllocEvent;
 
+class HeapRegionManager; //cgmin
 
 // A helper class for caching a Method* when the user of the cache
 // only cares about the latest version of the Method*.  This cache safely
@@ -182,6 +183,8 @@ class Universe: AllStatic {
 
   // The particular choice of collected heap.
   static CollectedHeap* _collectedHeap;
+
+  static HeapRegionManager* _hrm; //cgmin
 
   static intptr_t _non_oop_bits;
 
@@ -343,6 +346,9 @@ class Universe: AllStatic {
 
   // The particular choice of collected heap.
   static CollectedHeap* heap() { return _collectedHeap; }
+
+  static HeapRegionManager* hrm() { return _hrm; } //cgmin
+//  static HeapRegion* addr_to_region(HeapWord* obj) { return NULL; }
 
   // For UseCompressedOops
   // Narrow Oop encoding mode:

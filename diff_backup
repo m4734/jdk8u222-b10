@@ -42,7 +42,7 @@ inline HeapWord* Space::block_start(const void* p) {
 \
 /*//cgmin*/ \
   _cog_array->clear();\
-  unsigned long i;\
+  int i;\
   for (i=0;i<_mapMax;i++)\
     _pnMap[i] = 0;\
   /*\
@@ -56,15 +56,8 @@ inline HeapWord* Space::block_start(const void* p) {
   co->space->end();
   */\
 \
-  unsigned long space_left,align_waste;\
-  HeapWord* fail_addr=0;\
-  HeapWord* space_limit;\
-  HeapWord* compact_end;\
-  HeapWord* q2;\
-  COG cog;\
-  unsigned long diff;\
-  bool opt;\
-  opt = true;\
+  unsigned long space_left;\
+\
 \
 \
   HeapWord* compact_top; /* This is where we are currently compacting to. */ \
@@ -102,6 +95,11 @@ inline HeapWord* Space::block_start(const void* p) {
                                                                              \
   HeapWord* q = bottom();                                                    \
   HeapWord* t = scan_limit();                                                \
+\
+  size_t cs = 0;\
+  HeapWord* new_start = 0;\
+  HeapWord* ct=0;\
+\
                                                                              \
   HeapWord*  end_of_live= q;    /* One byte beyond the last byte of the last \
                                    live object. */                           \
@@ -112,180 +110,39 @@ inline HeapWord* Space::block_start(const void* p) {
                                                                              \
   const intx interval = PrefetchScanIntervalInBytes;                         \
                                                                              \
-  compact_end = cp->space->end();\
-  \
   while (q < t) {                                                            \
     assert(!block_is_obj(q) ||                                               \
            oop(q)->mark()->is_marked() || oop(q)->mark()->is_unlocked() ||   \
            oop(q)->mark()->has_bias_pattern(),                               \
            "these are the only valid states during a mark sweep");           \
-    if ((block_is_obj(q) && oop(q)->is_gc_marked())/* || q < live_addr*/ /*cgmin*/) {                         \
+    if (block_is_obj(q) && oop(q)->is_gc_marked()) {                         \
       /* prefetch beyond q */                                                \
       Prefetch::write(q, interval);                                          \
       size_t size = block_size(q);                                           \
-      /* //cgmin forward*/ \
-      if (/*true ||*/ (unsigned long)q / 4096 == (unsigned long)(q+size) / 4096 || q < fail_addr)\
+/*      ct = compact_top;*/\
+      compact_top = cp->space->forward(oop(q), size, cp, compact_top);       \
+\
+if (true)\
+{\
+      if (end_of_live != q || ct+size != compact_top) \
       {\
-        compact_top = cp->space->forward_no_opt(oop(q), size, cp, compact_top,opt);       \
-        q += size;                                                             \
-        end_of_live = q;                                                       \
+        if (cs >= 512) /*//cgmin512*/ \
+        {\
+          groupStart->append(new_start);\
+          groupSize->append(cs);\
+          groupNum++;\
+/*     printf("cgmin0 %p %lu %d\n",new_start,cs,groupNum);*/\
+       }\
+        new_start = q; \
+        cs = size;\
       }\
       else\
-      {\
-        space_left = (compact_end - compact_top) * sizeof(HeapWord);\
-        align_waste = (4096+((unsigned long)q % 4096)-(unsigned long)compact_top % 4096) % 4096;\
-        if (space_left >= 4096 + align_waste && (align_waste == 0 || align_waste >= CollectedHeap::min_fill_size()*sizeof(HeapWord)))\
-        {\
-          cog.start = q;\
-          cog.end = 0;\
-          space_limit = (HeapWord*)((unsigned long)cog.start + space_left - align_waste);\
-          while (q < t && oop(q)->is_gc_marked() && (unsigned long)cog.end / 4096 <= (unsigned long)cog.start / 4096 + 10)\
-          {\
-            size = block_size(q);\
-            if (q + size > space_limit)\
-              break;\
-            if ((unsigned long)(q + size) / 4096 != (unsigned long)q / 4096)\
-              cog.end = q + size;\
-/*            oop(q)->init_mark();*/\
-            q += size;\
-          }\
-/*          fail_addr = cog.end;*/\
-          if (cog.end == 0 || (unsigned long)cog.end / 4096 <= (unsigned long)cog.start / 4096 + 10)\
-          {\
-          /*\
-          q = cog.start;\
-          while(q < live_addr)\
-          {\
-              oop(q)->set_mark(markOopDesc::prototype()->set_marked());\
-              size = block_size(q);\
-              q+=size;\
-          }\
-          */\
-            q = cog.start;\
-            size = block_size(q);\
-            compact_top = cp->space->forward_no_opt(oop(q), size, cp, compact_top,opt);\
-            q += size;\
-            end_of_live = q;\
-          }\
-          else\
-          {\
-            cog.align_waste = align_waste;\
-            cog.forward = (HeapWord*)((unsigned long)compact_top + align_waste);\
-          q = cog.start;\
-            if ((unsigned long)cog.start % 4096 != 0)\
-            {\
-              oop(cog.start)->forward_to(oop(cog.forward));\
-              q+=block_size(q);\
-              }\
-\
-\
-            while(q < cog.end)\
-            {\
-              oop(q)->init_mark();\
-              q += block_size(q);\
-            }\
-            \
-          \
-/*          q2 = cog.end;*/\
-          while (q < t && oop(q)->is_gc_marked())\
-          {\
-            size = block_size(q);\
-            if (q + size > space_limit)\
-              break;\
-            if ((unsigned long)(q + size) / 4096 != (unsigned long)q / 4096)\
-            {\
-            /*\
-              while(q2 < q + size)\
-              {\
-                oop(q2)->init_mark();\
-                q2+=block_size(q2);\
-              }\
-              */\
-              cog.end = q + size;\
-              }\
-            oop(q)->init_mark();\
-            q += size;\
-          }\
-          q2 = cog.end;\
-          while (q2 < q)\
-          {\
-               oop(q2)->set_mark(markOopDesc::prototype()->set_marked());\
-            q2+=block_size(q2);\
-          }\
-/*          \
-q = cog.start;\
-if ((unsigned long)q % 4096 != 0)\
-  q+=block_size(q);\
-while(q<cog.end)\
-{\
-  oop(q)->init_mark();\
-  q+=block_size(q);\
-}\
-*/          \
-            unsigned long start_i,end_i;\
-/*            HeapWord* ttt;*/\
-            cog.length = (cog.end - cog.start) * sizeof(HeapWord);\
-            _cog_array->append(cog);\
-/*            printf("cog %p %p %p %lu %lu\n",cog.start,cog.end,cog.forward,cog.length,cog.align_waste);*/\
-            \
-            q = cog.end;\
-            end_of_live = q;\
-            compact_top = cp->space->occupy((align_waste+cog.length)/sizeof(HeapWord),cp,compact_top);\
-            /*\
-            cp->space->set_compaction_top(compact_top+(align_waste+cog.length)/sizeof(HeapWord));\
-            compact_top+=(align_waste+cog.length)/sizeof(HeapWord);\
-            */\
-            /*\
-            q = cog.start;\
-            ttt = cog.forward;\
-            while (q < cog.end)\
-            {\
-              if (oop(q)->is_gc_marked() == false)\
-                printf("mark error\n ");\
-              oop(q)->forward_to(ttt);\
-              size = block_size(q);\
-              ttt+=size;\
-              q+=size;\
-            }\
-            */\
-            \
-            start_i = ((unsigned long)cog.start + 4096 -1 - _b4)/4096;\
-            end_i = ((unsigned long)cog.end - _b4)/4096;\
-            if (cog.start > cog.forward)\
-            {\
-              diff = cog.start - cog.forward;\
-              for (i = start_i; i < end_i; i++)\
-              {\
-                _pnMap[i] = 2;\
-                _dvMap[i] = diff;\
-              }\
-            }\
-            else if (cog.start < cog.forward)\
-            {\
-              diff = cog.forward - cog.start;\
-              for (i=start_i;i<end_i;i++)\
-              {\
-                _pnMap[i] = 1;\
-                _dvMap[i] = diff;\
-              }\
-            }\
-            else\
-            {\
-              for (i=start_i;i<end_i;i++)\
-                _pnMap[i] = 3;\
-            }\
-          }\
-          fail_addr = cog.end;\
+        cs+=size; \
+        ct = compact_top;\
         }\
-        else\
-        {\
-/*             q = cog.start;*/\
-/*            size = block_size(q);*/\
-            compact_top = cp->space->forward_no_opt(oop(q), size, cp, compact_top,opt);\
-            q += size;\
-            end_of_live = q;\
-        }\
-      }\
+\
+      q += size;                                                             \
+      end_of_live = q;                                                       \
       \
     } else {                                                                 \
       /* run over all the contiguous dead objects */                         \
@@ -302,7 +159,28 @@ while(q<cog.end)\
       if (allowed_deadspace > 0 && q == compact_top) {                       \
         size_t sz = pointer_delta(end, q);                                   \
         if (insert_deadspace(allowed_deadspace, q, sz)) {                    \
-          compact_top = cp->space->forward_no_opt(oop(q), sz, cp, compact_top,opt);     \
+      /*  ct = compact_top;*/\
+          compact_top = cp->space->forward(oop(q), sz, cp, compact_top);     \
+          \
+          /*\
+          if (false) { \
+            if (end_of_live != q || ct+sz != compact_top) \
+            {\
+              if (cs >= 512) / \
+              {\
+                groupStart->append(new_start);\
+                groupSize->append(cs);\
+                groupNum++;\
+             }\
+              new_start = q; \
+              cs = sz;\
+            }\
+            else\
+              cs+=sz; \
+            ct = compact_top;\
+          }\
+          */\
+\
           q = end;                                                           \
           end_of_live = end;                                                 \
           continue;                                                          \
@@ -330,7 +208,6 @@ while(q<cog.end)\
                                                                              \
       /* move on to the next object */                                       \
       q = end;                                                               \
-      opt = false; /*cgmin*/\
     }                                                                        \
   }                                                                          \
                                                                              \
@@ -347,17 +224,14 @@ while(q<cog.end)\
   /* save the compaction_top of the compaction space. */                     \
   cp->space->set_compaction_top(compact_top);                                \
 \
-/*\
-         GrowableArrayIterator<COG> it = _cog_array->begin();\
-        while (it != _cog_array->end())\
-        {\
-          cog = *it;\
-          printf("cog %p %p %p %lu %lu\n",cog.start,cog.end,cog.forward,cog.length,cog.align_waste);\
-          if (oop(cog.end)->is_gc_marked() == false && oop(cog.end)->mark()->decode_pointer() == NULL)\
-            printf("Null false\n");\
-          ++it;\
-        }\ 
-        */\
+  if (cs >= 512) /*//cgmin512*/ \
+  {\
+    groupStart->append(new_start);\
+    groupSize->append(cs);\
+    groupNum++;\
+    /*printf("cgmin0 %p %lu %d\n",new_start,cs,groupNum);*/\
+  }\
+\
 }
 
 #define SCAN_AND_ADJUST_POINTERS(adjust_obj_size) {                             \
@@ -370,7 +244,7 @@ while(q<cog.end)\
   assert(_first_dead <= _end_of_live, "Stands to reason, no?");                 \
                                                                                 \
   if (q < t && _first_dead > q &&                                               \
-      (!oop(q)->is_gc_marked() || _pnMap[((unsigned long)q-_b4)/4096] == 3)) {                                                \
+      !oop(q)->is_gc_marked()) {                                                \
     /* we have a chunk of the space which hasn't moved and we've                \
      * reinitialized the mark word during the previous pass, so we can't        \
      * use is_gc_marked for the traversal. */                                   \
@@ -407,7 +281,7 @@ while(q<cog.end)\
   while (q < t) {                                                               \
     /* prefetch beyond q */                                                     \
     Prefetch::write(q, interval);                                               \
-    if (oop(q)->is_gc_marked() || _pnMap[((unsigned long)q-_b4)/4096] != 0 /* //cgmin */) {                                               \
+    if (oop(q)->is_gc_marked()) {                                               \
       /* q is alive */                                                          \
       /* point all the oops to the new location */                              \
       size_t size = oop(q)->adjust_pointers();                                  \
@@ -419,22 +293,6 @@ while(q<cog.end)\
        * live object */                                                         \
       debug_only(prev_q = q);                                                   \
       q = (HeapWord*) oop(q)->mark()->decode_pointer();                         \
-      /*\
-      if (q <= prev_q)\
-      {\
-        GrowableArrayIterator<COG> it = _cog_array->begin();\
-        COG cog;\
-        while (it != _cog_array->end())\
-        {\
-          cog = *it;\
-          printf("cog %p %p %p %lu %lu\n",cog.start,cog.end,cog.forward,cog.length,cog.align_waste);\
-          if (oop(cog.start)->is_gc_marked() == false)\
-            printf("false\n");\
-          ++it;\
-        }\
-        printf("assert %p %p\n",q,prev_q);\
-        }\
-        */\
       assert(q > prev_q, "we should be moving forward through memory");         \
     }                                                                           \
   }                                                                             \
@@ -443,26 +301,18 @@ while(q<cog.end)\
 }
 
 #define SCAN_AND_COMPACT(obj_size) {                                            \
-/*printf("c0\n");*/\
   /* Copy all live objects to their new location                                \
    * Used by MarkSweep::mark_sweep_phase4() */                                  \
-\
-/*unsigned long sum1,sum2;*/\
-/*sum1 = sum2 = 0;*/\
-COG cog;\
-  GrowableArrayIterator<COG> it = _cog_array->begin();\
-  HeapWord* forward;\
-  size_t size;\
-  if (_cog_array->length() == 0)\
-    cog.start = 0;\
-  else\
-    cog = *it;\
-                                                                               \
+                                                                                \
   HeapWord*       q = bottom();                                                 \
   HeapWord* const t = _end_of_live;                                             \
   debug_only(HeapWord* prev_q = NULL);                                          \
+\
+int sss,bbb;\
+sss = bbb = 0; \
+\
   if (q < t && _first_dead > q &&                                               \
-      (!oop(q)->is_gc_marked() && !(cog.start == q && cog.start != cog.forward)/* && _pnMap[((unsigned long)q-_b4)/4096] == 0*/)) {                                                \
+      !oop(q)->is_gc_marked()) {                                                \
     debug_only(                                                                 \
     /* we have a chunk of the space which hasn't moved and we've reinitialized  \
      * the mark word during the previous pass, so we can't use is_gc_marked for \
@@ -470,22 +320,8 @@ COG cog;\
     HeapWord* const end = _first_dead;                                          \
                                                                                 \
     while (q < end) {                                                           \
-    if (q == cog.start)\
-    {\
-/*    printf("%p %p %p %p %p\n",bottom(),_first_dead,cog.start,cog.forward,cog.end);*/\
-      if (q != cog.forward)\
-        printf("error %p\n",cog.forward);\
-      q = cog.end;\
-      ++it;\
-      if (it == _cog_array->end())\
-        cog.start = 0;\
-      else\
-        cog = *it;\
-      continue;\
-    }\
-    \
       size_t size = obj_size(q);                                                \
-      assert((!oop(q)->is_gc_marked()/* && _pnMap[((unsigned long)q-_b4)/4096] == 0*/),                                           \
+      assert(!oop(q)->is_gc_marked(),                                           \
              "should be unmarked (special dense prefix handling)");             \
       debug_only(prev_q = q);                                                   \
       q += size;                                                                \
@@ -500,81 +336,25 @@ COG cog;\
     }                                                                           \
   }                                                                             \
                                                                                 \
-while(cog.start != 0 && it != _cog_array->end())\
-{\
-  if (q > cog.start)\
-  {\
-    ++it;\
-    cog = *it;\
-  }\
-  else\
-    break;\
-}\
-if(cog.start != 0 && it == _cog_array->end())\
-  cog.start = 0;\
   const intx scan_interval = PrefetchScanIntervalInBytes;                       \
   const intx copy_interval = PrefetchCopyIntervalInBytes;                       \
   \
-/*    printf("c1\n");*/\
+/*//cgmin*/\
+  HeapWord* gs=0;\
+/*  HeapWord* ge=0;*/\
+  HeapWord* qe;\
+  HeapWord* qi;\
+  size_t gl=0;\
+  int gi=0;\
+  if (gi < groupNum)\
+  {\
+    gs = groupStart->at(gi);\
+    gl = groupSize->at(gi);\
+/*  printf("cgmin1 %p %p %lu\n",gs,ge,gl);*/\
+  }\
+  \
   while (q < t) {                                                               \
-     /* //cgmin compact */ \
-      if (q == cog.start) \
-      {\
-     /* printf("cog %p %p %p %lu %lu\n",cog.start,cog.end,cog.forward,cog.length,cog.align_waste);*/\
-     \
-/*     \
-            q = cog.start;\
-            while (q < cog.end)\
-            {\
-              if (oop(q)->is_gc_marked() == false)\
-                printf("mark error\n ");\
-              oop(q)->init_mark();\
-              size = block_size(q);\
-              q+=size;\
-            }\
-            \
-*/            \
-        if (cog.align_waste > 0)\
-          CollectedHeap::fill_with_objects(cog.forward-cog.align_waste/sizeof(HeapWord),cog.align_waste/sizeof(HeapWord));\
-        oop(cog.start)->init_mark();\
-        if (cog.start != cog.forward)\
-        {\
-          if (false)\
-            Copy::aligned_conjoint_words(cog.start,cog.forward,cog.length/sizeof(HeapWord));\
-            else\
-            {\
-          forward = cog.forward;\
-          size = (HeapWord*)(((unsigned long)cog.start + 4096 -1)/4096*4096) - cog.start;\
-          q = cog.start;\
-          if (size > 0)\
-          {\
-            Copy::aligned_conjoint_words(cog.start,forward,size);\
-/*            sum1+=size;*/\
-            q+=size;\
-            forward+=size;\
-          }\
-          size = ((unsigned long)cog.end/4096*4096-((unsigned long)cog.start+4096-1)/4096*4096) / sizeof(HeapWord);\
-          /*Copy::aligned_conjoint_words(q,forward,size);*/ /*temp*/\
-          syscall(333,q,forward,size*sizeof(HeapWord));\
-/*          sum2+=size;*/\
-          /*syscall*/\
-          q = (HeapWord*)((unsigned long)cog.end - (unsigned long)cog.end % 4096);\
-          forward+=size;\
-          size = (unsigned long)cog.end%4096/sizeof(HeapWord);\
-          Copy::aligned_conjoint_words(q,forward,size);\
-/*          sum1+=size;*/\
-        }\
-        }\
-        q = cog.end;\
-        ++it;\
-        if (it == _cog_array->end())\
-          cog.start = 0;\
-        else\
-          cog = *it;\
-/*        printf("con\n");*/\
-        continue;\
-      }\
-    if (!oop(q)->is_gc_marked() /*&& _pnMap[((unsigned long)q-_b4)/4096] == 0*/) {                                              \
+    if (!oop(q)->is_gc_marked()) {                                              \
       /* mark is pointer to next marked oop */                                  \
       debug_only(prev_q = q);                                                   \
       q = (HeapWord*) oop(q)->mark()->decode_pointer();                         \
@@ -591,17 +371,64 @@ if(cog.start != 0 && it == _cog_array->end())\
       Prefetch::write(compaction_top, copy_interval);                           \
                                                                                 \
       /* copy object and reinit its mark */                                     \
-/*      assert(q != compaction_top, "everything in this pass should be moving"); */ \
-      if (q != compaction_top)\
+      assert(q != compaction_top, "everything in this pass should be moving");  \
+\
+      /*//cgmin*/\
+      if (gs == q)\
       {\
-        Copy::aligned_conjoint_words(q, compaction_top, size);                    \
-/*        sum1+=size;*/\
+/*      bbb+=gl;*/\
+/*        Copy::aligned_conjoint_words(q, compaction_top, gl)*/;                    \
+/*printf("cgmin2 %p - %p / %p - %p %lu\n",q,q+gl,compaction_top,compaction_top+gl,gl);*/\
+\
+if (true) { \
+qe = q+gl;\
+qi = q;\
+while(qi < qe)\
+{\
+      oop(qi)->init_mark();                                         \
+      qi+=obj_size(qi);\
+}\
+}\
+        Copy::aligned_conjoint_words(q, compaction_top, gl);                    \
+q+=gl;\
+\
+/*\
+HeapWord* qq = q;\
+HeapWord* cc = compaction_top;\
+ce = q + gl;\
+while (qq < ce)\
+{\
+if (cc != (HeapWord*)oop(qq)->forwardee())\
+  printf("cgmin error\n");\
+  cc+=obj_size(qq);\
+qq+=obj_size(qq);\
+}\
+*/\
+        gi++;\
+        if (gi < groupNum)\
+        {\
+/*        ge = gs + gl;*/\
+     gs = groupStart->at(gi);\
+    gl = groupSize->at(gi);\
+/*  printf("cgmin1 %p %p %lu\n",gs,ge,gl);*/\
         }\
+        else\
+          gs = /*ge =*/ _end_of_live;\
+       /*   continue;*/\
+      }\
+/*      else if (ge <= q )*/\
+else\
+      {\
+/*      sss+=size;*/\
+        Copy::aligned_conjoint_words(q, compaction_top, size);                    \
+/*        printf("copy %p - %p / %p - %p %lu\n",q,q+size,compaction_top,compaction_top+size,size);*/\
+     /*   }*/\
       oop(compaction_top)->init_mark();                                         \
       assert(oop(compaction_top)->klass() != NULL, "should have a class");      \
                                                                                 \
       debug_only(prev_q = q);                                                   \
       q += size;                                                                \
+      }\
     }                                                                           \
   }                                                                             \
                                                                                 \
@@ -619,8 +446,7 @@ if(cog.start != 0 && it == _cog_array->end())\
   } else {                                                                      \
     if (ZapUnusedHeapArea) mangle_unused_area();                                \
   }                                                                             \
-/*  printf("bbb %d\nsss %d\n",sum2,sum1);*/\
-/*printf("c2\n");*/\
+/*  printf("bbb %d\nsss %d\n",bbb,sss);*/\
 }
 
 inline HeapWord* OffsetTableContigSpace::allocate(size_t size) {

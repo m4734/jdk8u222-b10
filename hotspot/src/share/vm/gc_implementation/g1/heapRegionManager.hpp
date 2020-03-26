@@ -65,6 +65,7 @@ class G1HeapRegionTable : public G1BiasedMappedArray<HeapRegion*> {
 // * max_length() returns the maximum number of regions the heap can have.
 //
 
+
 class HeapRegionManager: public CHeapObj<mtGC> {
   friend class VMStructs;
 
@@ -236,6 +237,11 @@ public:
 
   // Do some sanity checking.
   void verify_optional() PRODUCT_RETURN;
+
+//  static HeapRegionManager* _hrm_g; //cgmin
+//  static HeapRegionManager* hrm_g() { return _hrm_g; }
 };
+
+//HeapRegionManager* HeapRegionManager::_hrm_g = NULL;
 
 #endif // SHARE_VM_GC_IMPLEMENTATION_G1_HEAPREGIONMANAGER_HPP
