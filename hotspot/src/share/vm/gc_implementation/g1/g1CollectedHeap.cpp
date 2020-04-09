@@ -845,6 +845,7 @@ G1CollectedHeap::mem_allocate(size_t word_size,
     if (!isHumongous(word_size)) {
       result = attempt_allocation(word_size, &gc_count_before, &gclocker_retry_count);
     } else {
+    printf("Humongous %lu\n",word_size); //cgmin
       result = attempt_allocation_humongous(word_size, &gc_count_before, &gclocker_retry_count);
     }
     if (result != NULL) {
