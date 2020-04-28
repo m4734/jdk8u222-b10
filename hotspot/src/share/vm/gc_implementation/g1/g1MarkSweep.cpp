@@ -70,10 +70,9 @@ void G1MarkSweep::invoke_at_safepoint(ReferenceProcessor* rp,
   assert(rp != NULL, "should be non-NULL");
   assert(rp == G1CollectedHeap::heap()->ref_processor_stw(), "Precondition");
 
-  //cgmin
-  struct timespec ts0,ts1,ts2,ts3,ts4,ts5,ts6;
+//  struct timespec ts0,ts1,ts2,ts3,ts4,ts5,ts6; //cgmin
 
-  clock_gettime(CLOCK_MONOTONIC,&ts0);
+//  clock_gettime(CLOCK_MONOTONIC,&ts0);
 
   GenMarkSweep::_ref_processor = rp;
   rp->setup_policy(clear_all_softrefs);
@@ -91,28 +90,28 @@ void G1MarkSweep::invoke_at_safepoint(ReferenceProcessor* rp,
   // The marking doesn't preserve the marks of biased objects.
   BiasedLocking::preserve_marks();
 
-  clock_gettime(CLOCK_MONOTONIC,&ts1);
+//  clock_gettime(CLOCK_MONOTONIC,&ts1);
 
   mark_sweep_phase1(marked_for_unloading, clear_all_softrefs);
 
-  clock_gettime(CLOCK_MONOTONIC,&ts2);
+//  clock_gettime(CLOCK_MONOTONIC,&ts2);
 
   mark_sweep_phase2();
 
   // Don't add any more derived pointers during phase3
   COMPILER2_PRESENT(DerivedPointerTable::set_active(false));
 
-  clock_gettime(CLOCK_MONOTONIC,&ts3);
+//  clock_gettime(CLOCK_MONOTONIC,&ts3);
 
   mark_sweep_phase3();
 
-  clock_gettime(CLOCK_MONOTONIC,&ts4);
+//  clock_gettime(CLOCK_MONOTONIC,&ts4);
 
   mark_sweep_phase4();
 
-  syscall(335); //cgmin syscall
+//  syscall(335); //cgmin syscall
 
-  clock_gettime(CLOCK_MONOTONIC,&ts5);
+//  clock_gettime(CLOCK_MONOTONIC,&ts5);
 
   GenMarkSweep::restore_marks();
   BiasedLocking::restore_marks();
@@ -130,6 +129,7 @@ void G1MarkSweep::invoke_at_safepoint(ReferenceProcessor* rp,
   // refs processing: clean slate
   GenMarkSweep::_ref_processor = NULL;
 
+/*
   clock_gettime(CLOCK_MONOTONIC,&ts6);
 
   printf("1 %ld\n",(ts2.tv_sec-ts1.tv_sec)*1000000000+ts2.tv_nsec-ts1.tv_nsec);
@@ -137,7 +137,7 @@ void G1MarkSweep::invoke_at_safepoint(ReferenceProcessor* rp,
   printf("3 %ld\n",(ts4.tv_sec-ts3.tv_sec)*1000000000+ts4.tv_nsec-ts3.tv_nsec);
   printf("4 %ld\n",(ts5.tv_sec-ts4.tv_sec)*1000000000+ts5.tv_nsec-ts4.tv_nsec);
   printf("t %ld\n\n",(ts6.tv_sec-ts0.tv_sec)*1000000000+ts6.tv_nsec-ts0.tv_nsec);
-
+*/
 }
 
 

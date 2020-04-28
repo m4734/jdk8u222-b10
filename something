@@ -123,8 +123,8 @@ inline HeapWord* Space::block_start(const void* p) {
       /* prefetch beyond q */                                                \
       Prefetch::write(q, interval);                                          \
       size_t size = block_size(q);                                           \
-      /* //cgmin forward @@@on/off@@@*/ \
-      if (true ||  (unsigned long)q / 4096 == (unsigned long)(q+size) / 4096 || q < fail_addr)\
+      /* //cgmin forward*/ \
+      if (/*true ||*/ (unsigned long)q / 4096 == (unsigned long)(q+size) / 4096 || q < fail_addr)\
       {\
         compact_top = cp->space->forward_no_opt(oop(q), size, cp, compact_top,opt);       \
         q += size;                                                             \
@@ -555,8 +555,7 @@ if(cog.start != 0 && it == _cog_array->end())\
           }\
           size = ((unsigned long)cog.end/4096*4096-((unsigned long)cog.start+4096-1)/4096*4096) / sizeof(HeapWord);\
           /*Copy::aligned_conjoint_words(q,forward,size);*/ /*temp*/\
-          syscall(333,q,forward,size*sizeof(HeapWord),1);\
-/*          syscall(336);*/\
+          syscall(333,q,forward,size*sizeof(HeapWord),true);\
 /*          sum2+=size;*/\
           /*syscall*/\
           q = (HeapWord*)((unsigned long)cog.end - (unsigned long)cog.end % 4096);\

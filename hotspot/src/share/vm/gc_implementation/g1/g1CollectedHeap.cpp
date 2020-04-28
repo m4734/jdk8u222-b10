@@ -845,7 +845,7 @@ G1CollectedHeap::mem_allocate(size_t word_size,
     if (!isHumongous(word_size)) {
       result = attempt_allocation(word_size, &gc_count_before, &gclocker_retry_count);
     } else {
-    printf("Humongous %lu\n",word_size); //cgmin
+//    printf("Humongous %lu\n",word_size); //cgmin
       result = attempt_allocation_humongous(word_size, &gc_count_before, &gclocker_retry_count);
     }
     if (result != NULL) {
@@ -4158,6 +4158,8 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
 
         // Actually do the work...
         evacuate_collection_set(evacuation_info);
+
+//syscall(335); //cgmin syscall
 
         free_collection_set(g1_policy()->collection_set(), evacuation_info);
 

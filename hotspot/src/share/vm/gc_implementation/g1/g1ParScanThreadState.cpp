@@ -211,14 +211,39 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
 
   uint age = 0;
   InCSetState dest_state = next_state(state, old_mark, age);
-  HeapWord* obj_ptr = _g1_par_allocator->plab_allocate(dest_state, word_sz, context);
+
+  size_t word_sz2; //cgmin
+  HeapWord* end_of_alloc;
+  unsigned long align_waste;
+  HeapWord* obj_ptr0;
+  size_t aligned0,aligned4;
+  if (/*false &&*/ word_sz >= 512*10) //cgmin young on/off
+  {
+  /*
+    top_test = _g1_par_allocator->plab_allocate(dest_state,0,context);
+    diff = ((unsigned long)old+4096-(unsigned long)top_test%4096)%4096;
+    if (diff >= CollectedHeap::min_fill_size()*sizeof(HeapWord) || diff == 0)
+      word_sz2 = word_sz+diff/sizeof(HeapWord);
+    else
+      word_sz2 = word_sz;
+      */
+      word_sz2 = word_sz+512+CollectedHeap::min_fill_size()*2;
+//      printf("ws2 %u\n",word_sz2);
+  }
+  else
+    word_sz2 = word_sz;
+
+//  word_sz2 = word_sz;
+
+  HeapWord* obj_ptr = _g1_par_allocator->plab_allocate(dest_state, word_sz2, context);
 
   // PLAB allocations should succeed most of the time, so we'll
   // normally check against NULL once and that's it.
   if (obj_ptr == NULL) {
-    obj_ptr = _g1_par_allocator->allocate_direct_or_new_plab(dest_state, word_sz, context);
+  word_sz2 = word_sz;
+    obj_ptr = _g1_par_allocator->allocate_direct_or_new_plab(dest_state, word_sz2, context);
     if (obj_ptr == NULL) {
-      obj_ptr = allocate_in_next_plab(state, &dest_state, word_sz, context);
+      obj_ptr = allocate_in_next_plab(state, &dest_state, word_sz2, context);
       if (obj_ptr == NULL) {
         // This will either forward-to-self, or detect that someone else has
         // installed a forwarding pointer.
@@ -233,10 +258,22 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
   if (_g1h->evacuation_should_fail()) {
     // Doing this after all the allocation attempts also tests the
     // undo_allocation() method too.
-    _g1_par_allocator->undo_allocation(dest_state, obj_ptr, word_sz, context);
+    _g1_par_allocator->undo_allocation(dest_state, obj_ptr, word_sz2, context);
     return _g1h->handle_evacuation_failure_par(this, old);
   }
 #endif // !PRODUCT
+
+  if (word_sz != word_sz2)
+  {
+    end_of_alloc = obj_ptr+word_sz2;
+    align_waste = ((unsigned long)old%4096+4096-(unsigned long)obj_ptr%4096)%4096;
+    if (align_waste != 0 && align_waste < CollectedHeap::min_fill_size())
+      align_waste+=4096;
+    CollectedHeap::fill_with_objects(obj_ptr,align_waste/sizeof(HeapWord));
+    obj_ptr0 = obj_ptr;
+    aligned0 = align_waste;
+    obj_ptr = (HeapWord*)((unsigned long)obj_ptr + align_waste);
+  }
 
   // We're going to allocate linearly, so might as well prefetch ahead.
   Prefetch::write(obj_ptr, PrefetchCopyIntervalInBytes);
@@ -244,7 +281,37 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
   const oop obj = oop(obj_ptr);
   const oop forward_ptr = old->forward_to_atomic(obj);
   if (forward_ptr == NULL) {
-    Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, word_sz);
+    if (word_sz2 != word_sz)
+    {
+//    printf("%lu\n",word_sz);
+//       Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, word_sz);     
+unsigned long aligned1,aligned2,aligned3;
+      aligned1 = (4096-(unsigned long)obj_ptr%4096)%4096;
+      aligned2 = (unsigned long)(obj_ptr+word_sz)/4096*4096-(unsigned long)(obj_ptr+aligned1/sizeof(HeapWord));
+      aligned3 = (unsigned long)(obj_ptr+word_sz)-(unsigned long)(obj_ptr+word_sz)/4096*4096;
+      if (true || aligned1 <= 8) // for header
+      {
+        aligned1+=4096;
+        aligned2-=4096;
+//        printf("**********header\n");
+      }
+//      printf("--------------\n%p %p\n%lu %lu %lu\n %lu %lu\n--------------------\n",old,obj_ptr,aligned1,aligned2,aligned3,aligned1+aligned2+aligned3,(unsigned long)word_sz*sizeof(HeapWord));
+//printf("%p %p\n%p %p %lu\n",old,obj_ptr,(HeapWord*)old+aligned1/sizeof(HeapWord),obj_ptr+aligned1/sizeof(HeapWord),(aligned2)/sizeof(HeapWord));
+       Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, aligned1/sizeof(HeapWord));
+//       Copy::aligned_disjoint_words((HeapWord*) old+aligned1/sizeof(HeapWord), obj_ptr+aligned1/sizeof(HeapWord), (aligned2)/sizeof(HeapWord));
+           syscall(333,(HeapWord*)old+aligned1/sizeof(HeapWord),obj_ptr+aligned1/sizeof(HeapWord),(aligned2),false);
+//           syscall(335);
+           Copy::aligned_disjoint_words((HeapWord*) old+(aligned1+aligned2)/sizeof(HeapWord), obj_ptr+(aligned1+aligned2)/sizeof(HeapWord), aligned3/sizeof(HeapWord));     
+      CollectedHeap::fill_with_objects(obj_ptr+word_sz,end_of_alloc-(obj_ptr+word_sz));
+      /*
+      aligned4 = (end_of_alloc-(obj_ptr+word_sz))*sizeof(HeapWord);
+      if (aligned0 + aligned1 + aligned2 + aligned3 + aligned4 != (end_of_alloc-obj_ptr0)*sizeof(HeapWord))
+        printf("felkfnslenf\n");
+        */
+      
+    }
+    else
+      Copy::aligned_disjoint_words((HeapWord*) old, obj_ptr, word_sz2);
 
     if (dest_state.is_young()) {
       if (age < markOopDesc::max_age) {
@@ -279,7 +346,7 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
     }
 
     size_t* const surv_young_words = surviving_young_words();
-    surv_young_words[young_index] += word_sz;
+    surv_young_words[young_index] += word_sz2;
 
     if (obj->is_objArray() && arrayOop(obj)->length() >= ParGCArrayScanChunk) {
       // We keep track of the next start index in the length field of
@@ -295,7 +362,7 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
     }
     return obj;
   } else {
-    _g1_par_allocator->undo_allocation(dest_state, obj_ptr, word_sz, context);
+    _g1_par_allocator->undo_allocation(dest_state, obj_ptr, word_sz2, context);
     return forward_ptr;
   }
 }
