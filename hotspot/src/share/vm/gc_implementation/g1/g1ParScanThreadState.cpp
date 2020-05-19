@@ -217,7 +217,7 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
   unsigned long align_waste;
   HeapWord* obj_ptr0;
   size_t aligned0,aligned4;
-  if (/*false &&*/ word_sz >= 512*10) //cgmin young on/off
+  if (false && word_sz >= 512*4) //cgmin young on/off
   {
   /*
     top_test = _g1_par_allocator->plab_allocate(dest_state,0,context);
@@ -228,7 +228,7 @@ oop G1ParScanThreadState::copy_to_survivor_space(InCSetState const state,
       word_sz2 = word_sz;
       */
       word_sz2 = word_sz+512+CollectedHeap::min_fill_size()*2;
-//      printf("ws2 %u\n",word_sz2);
+//      printf("ws %u\n",word_sz);
   }
   else
     word_sz2 = word_sz;

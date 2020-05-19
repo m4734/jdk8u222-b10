@@ -56,7 +56,7 @@ inline HeapWord* Space::block_start(const void* p) {
   co->space->end();
   */\
 \
-  unsigned long space_left,align_waste;\
+  unsigned long space_left,align_waste,min_page;\
   HeapWord* fail_addr=0;\
   HeapWord* space_limit;\
   HeapWord* compact_end;\
@@ -65,6 +65,7 @@ inline HeapWord* Space::block_start(const void* p) {
   unsigned long diff;\
   bool opt;\
   opt = true;\
+  min_page=10;\
 \
 \
   HeapWord* compact_top; /* This is where we are currently compacting to. */ \
@@ -124,7 +125,7 @@ inline HeapWord* Space::block_start(const void* p) {
       Prefetch::write(q, interval);                                          \
       size_t size = block_size(q);                                           \
       /* //cgmin forward @@@on/off@@@*/ \
-      if (true ||  (unsigned long)q / 4096 == (unsigned long)(q+size) / 4096 || q < fail_addr)\
+      if (/*true || */ (unsigned long)q / 4096 == (unsigned long)(q+size) / 4096 || q < fail_addr)\
       {\
         compact_top = cp->space->forward_no_opt(oop(q), size, cp, compact_top,opt);       \
         q += size;                                                             \
@@ -139,7 +140,7 @@ inline HeapWord* Space::block_start(const void* p) {
           cog.start = q;\
           cog.end = 0;\
           space_limit = (HeapWord*)((unsigned long)cog.start + space_left - align_waste);\
-          while (q < t && oop(q)->is_gc_marked() && (unsigned long)cog.end / 4096 <= (unsigned long)cog.start / 4096 + 10)\
+          while (q < t && oop(q)->is_gc_marked() && (unsigned long)cog.end / 4096 <= (unsigned long)cog.start / 4096 + min_page)\
           {\
             size = block_size(q);\
             if (q + size > space_limit)\
@@ -150,7 +151,7 @@ inline HeapWord* Space::block_start(const void* p) {
             q += size;\
           }\
 /*          fail_addr = cog.end;*/\
-          if (cog.end == 0 || (unsigned long)cog.end / 4096 <= (unsigned long)cog.start / 4096 + 10)\
+          if (cog.end == 0 || (unsigned long)cog.end / 4096 <= (unsigned long)cog.start / 4096 + min_page)\
           {\
           /*\
           q = cog.start;\
