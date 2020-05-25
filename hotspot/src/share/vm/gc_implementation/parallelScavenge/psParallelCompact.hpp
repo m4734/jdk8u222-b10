@@ -236,6 +236,13 @@ public:
   class RegionData
   {
   public:
+
+    //cgmin RegionData
+    HeapWord* regionDest() const { return _regionDest; }
+    HeapWord* objectDest() const { return _objectDest; }
+    void set_regionDest(HeapWord* addr) { _regionDest = addr; }
+    void set_objectDest(HeapWord* addr) { _objectDest = addr; }
+
     // Destination address of the region.
     HeapWord* destination() const { return _destination; }
 
@@ -342,6 +349,10 @@ public:
     static const region_sz_t dc_claimed;         // Region has been claimed.
     static const region_sz_t dc_completed;       // Region has been completed.
     static const region_sz_t los_mask;           // Mask for live obj size.
+
+    //cgmin region data
+    HeapWord*            _regionDest;
+    HeapWord*            _objectDest;
 
     HeapWord*            _destination;
     size_t               _source_region;

@@ -526,6 +526,11 @@ ParallelCompactData::summarize_dense_prefix(HeapWord* beg, HeapWord* end)
   const size_t end_region = addr_to_region_idx(end);
   HeapWord* addr = beg;
   while (cur_region < end_region) {
+
+//cgmin dense prefix
+    _region_data[cur_reigon].set_objectDest(0);
+    _region_data[cur_region].set_regionDest(0);
+
     _region_data[cur_region].set_destination(addr);
     _region_data[cur_region].set_destination_count(0);
     _region_data[cur_region].set_source_region(cur_region);
@@ -668,12 +673,60 @@ bool ParallelCompactData::summarize(SplitInfo& split_info,
                   source_beg, source_end, source_next_val,
                   target_beg, target_end, *target_next);
   }
+//cgmin summary
+  const ParMarkBitMap* bitmap = PSParallelCompact::mark_bitmap();
+  HeapWord* top_live = target_beg;
 
   size_t cur_region = addr_to_region_idx(source_beg);
   const size_t end_region = addr_to_region_idx(region_align_up(source_end));
 
   HeapWord *dest_addr = target_beg;
   while (cur_region < end_region) {
+
+//cgmin summary
+//    size_t ws = =_region_data[cur_region].live_obj_size() + _region_data[cur_region].partial_obj_size(); // extending??
+    HeapWord* region_beg = region_to_addr(cur_region);
+    HeapWord* region_end = region_to_addr(cur_region+1);
+    HeapWord* live_obj_beg = bitmap->find_obj_beg(region_beg,region_end);
+    if (live_obj_beg != region_end)
+    {
+    unsigned long align = ((unsigned long)(top_live)*sizeof(HeapWord))%4096;
+    unsigned long ul_lob = ((unsigned long)(live_obj_beg)*sizeof(HeapWord));
+//    HeapWord* live_obj_end = bitmap->find_obj_end(region_to_addr(cur_region+1));
+    unsigned long ul_td = (ul_lob/4096)*4096+align;
+    if (ul_td > ul_lob)
+      ul_td-=4096;
+    HeapWord* target_dest = (HeapWord*)(ul_td/sizeof(HeapWord));
+
+    if (target_dest >= top_live)
+    {
+      _region_data[cur_region].set_objectDest(target_dest);
+//      _region_data[cur_region].set_regionDest(top_live);
+//      top_live+=_region_data[cur_region].live_obj_size();
+    }
+    else // failed because there is no enough space for alignment
+    {
+      _region_data[cur_region].set_objectDest(live_obj_beg);
+//      _region_data[cur_region].set_regionDest(top_live);
+    }
+
+    _region_data[cur_region].set_regionDest(top_live);
+    top_live+=_region_data[cur_region].live_obj_size();
+    if (cur_region+1 < end_region)
+      top_live+= partial_obj_end(cur_region+1)-_region_data[cur_region+1].partial_obj_addr();// + _region_data[cur_region].partial_obj_size(); // extending??
+    }
+    else // nothing to do in this region
+    {
+      _region_data[cur_region].set_objectDest(0);
+      _region_data[cur_region].set_regionDest(0);
+    }
+
+    if (false)
+    {
+      ++cur_region;
+      continue;
+    }
+
     // The destination must be set even if the region has no data.
     _region_data[cur_region].set_destination(dest_addr);
 
@@ -741,6 +794,9 @@ bool ParallelCompactData::summarize(SplitInfo& split_info,
   }
 
   *target_next = dest_addr;
+
+// *target_next = top_live; // doesn't matter i think
+
   return true;
 }
 
