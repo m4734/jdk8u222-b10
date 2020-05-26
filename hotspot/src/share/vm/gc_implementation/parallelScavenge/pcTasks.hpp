@@ -257,4 +257,25 @@ class DrainStacksCompactionTask : public GCTask {
   virtual void do_it(GCTaskManager* manager, uint which);
 };
 
+//cgmin drain stack task
+class DrainStacksPartialCompactionTask : public GCTask {
+ uint _stack_index;
+ uint stack_index() { return _stack_index; }
+ public:
+  DrainStacksPartialCompactionTask(uint stack_index) : GCTask(),
+                                                _stack_index(stack_index) {};
+  char* name() { return (char *)"drain-region-task"; }
+  virtual void do_it(GCTaskManager* manager, uint which);
+};
+
+class DrainStacksUpdateCompactionTask : public GCTask {
+ uint _stack_index;
+ uint stack_index() { return _stack_index; }
+ public:
+  DrainStacksUpdateCompactionTask(uint stack_index) : GCTask(),
+                                                _stack_index(stack_index) {};
+  char* name() { return (char *)"drain-region-task"; }
+  virtual void do_it(GCTaskManager* manager, uint which);
+};
+
 #endif // SHARE_VM_GC_IMPLEMENTATION_PARALLELSCAVENGE_PCTASKS_HPP

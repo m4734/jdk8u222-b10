@@ -196,6 +196,10 @@ private:
   // Process tasks remaining on any stack
   void drain_region_stacks();
 
+  //cgmin drain all region stacks
+  void drain_all_region_partial_stacks();
+  void drain_all_region_update_stacks();
+
 };
 
 inline ParCompactionManager* ParCompactionManager::manager_array(int index) {

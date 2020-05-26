@@ -209,3 +209,32 @@ void ParCompactionManager::drain_region_stacks() {
     }
   } while (!region_stack()->is_empty());
 }
+
+void ParCompactionManager::drain_all_region_partial_stacks() { //cgmin
+  do {
+    // Drain overflow stack first so other threads can steal.
+    size_t region_index;
+    while (region_stack()->pop_overflow(region_index)) {
+      PSParallelCompact::partial_fill_region(this, region_index); //cgmin
+    }
+
+    while (region_stack()->pop_local(region_index)) {
+      PSParallelCompact::partial_fill_region(this, region_index); //cgmin
+    }
+  } while (!region_stack()->is_empty());
+}
+
+void ParCompactionManager::drain_all_region_update_stacks() { //cgmin
+  do {
+    // Drain overflow stack first so other threads can steal.
+    size_t region_index;
+    while (region_stack()->pop_overflow(region_index)) {
+      PSParallelCompact::update_region(this, region_index); //cgmin
+    }
+
+    while (region_stack()->pop_local(region_index)) {
+      PSParallelCompact::update_region(this, region_index); //cgmin
+    }
+  } while (!region_stack()->is_empty());
+}
+

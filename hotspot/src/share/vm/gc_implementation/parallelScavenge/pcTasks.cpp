@@ -376,3 +376,120 @@ void DrainStacksCompactionTask::do_it(GCTaskManager* manager, uint which) {
     cm->set_region_stack_index((uint)max_uintx);
   }
 }
+
+
+void DrainStacksPartialCompactionTask::do_it(GCTaskManager* manager, uint which) { //cgmin
+  assert(Universe::heap()->is_gc_active(), "called outside gc");
+
+  NOT_PRODUCT(GCTraceTime tm("DrainStacksCompactionTask",
+    PrintGCDetails && TraceParallelOldGCTasks, true, NULL, PSParallelCompact::gc_tracer()->gc_id()));
+
+  ParCompactionManager* cm =
+    ParCompactionManager::gc_thread_compaction_manager(which);
+
+  uint which_stack_index;
+  bool use_all_workers = manager->all_workers_active();
+  if (use_all_workers) {
+    which_stack_index = which;
+    assert(manager->active_workers() == ParallelGCThreads,
+           err_msg("all_workers_active has been incorrectly set: "
+                   " active %d  ParallelGCThreads %d", manager->active_workers(),
+                   ParallelGCThreads));
+  } else {
+    which_stack_index = stack_index();
+  }
+
+  cm->set_region_stack(ParCompactionManager::region_list(which_stack_index));
+  if (TraceDynamicGCThreads) {
+    gclog_or_tty->print_cr("DrainStacksCompactionTask::do_it which = %d "
+                           "which_stack_index = %d/empty(%d) "
+                           "use all workers %d",
+                           which, which_stack_index,
+                           cm->region_stack()->is_empty(),
+                           use_all_workers);
+  }
+
+  cm->set_region_stack_index(which_stack_index);
+
+  // Process any regions already in the compaction managers stacks.
+//  cm->drain_region_stacks();
+  cm->drain_all_region_partial_stacks(); //cgmin
+
+  assert(cm->region_stack()->is_empty(), "Not empty");
+
+  if (!use_all_workers) {
+    // Always give up the region stack.
+    assert(cm->region_stack() ==
+           ParCompactionManager::region_list(cm->region_stack_index()),
+           "region_stack and region_stack_index are inconsistent");
+    ParCompactionManager::push_recycled_stack_index(cm->region_stack_index());
+
+    if (TraceDynamicGCThreads) {
+      void* old_region_stack = (void*) cm->region_stack();
+      int old_region_stack_index = cm->region_stack_index();
+      gclog_or_tty->print_cr("Pushing region stack 0x%x/%d",
+        old_region_stack, old_region_stack_index);
+    }
+
+    cm->set_region_stack(NULL);
+    cm->set_region_stack_index((uint)max_uintx);
+  }
+}
+
+void DrainStacksUpdateCompactionTask::do_it(GCTaskManager* manager, uint which) { //cgmin
+  assert(Universe::heap()->is_gc_active(), "called outside gc");
+
+  NOT_PRODUCT(GCTraceTime tm("DrainStacksCompactionTask",
+    PrintGCDetails && TraceParallelOldGCTasks, true, NULL, PSParallelCompact::gc_tracer()->gc_id()));
+
+  ParCompactionManager* cm =
+    ParCompactionManager::gc_thread_compaction_manager(which);
+
+  uint which_stack_index;
+  bool use_all_workers = manager->all_workers_active();
+  if (use_all_workers) {
+    which_stack_index = which;
+    assert(manager->active_workers() == ParallelGCThreads,
+           err_msg("all_workers_active has been incorrectly set: "
+                   " active %d  ParallelGCThreads %d", manager->active_workers(),
+                   ParallelGCThreads));
+  } else {
+    which_stack_index = stack_index();
+  }
+
+  cm->set_region_stack(ParCompactionManager::region_list(which_stack_index));
+  if (TraceDynamicGCThreads) {
+    gclog_or_tty->print_cr("DrainStacksCompactionTask::do_it which = %d "
+                           "which_stack_index = %d/empty(%d) "
+                           "use all workers %d",
+                           which, which_stack_index,
+                           cm->region_stack()->is_empty(),
+                           use_all_workers);
+  }
+
+  cm->set_region_stack_index(which_stack_index);
+
+  // Process any regions already in the compaction managers stacks.
+  cm->drain_all_region_update_stacks();
+
+  assert(cm->region_stack()->is_empty(), "Not empty");
+
+  if (!use_all_workers) {
+    // Always give up the region stack.
+    assert(cm->region_stack() ==
+           ParCompactionManager::region_list(cm->region_stack_index()),
+           "region_stack and region_stack_index are inconsistent");
+    ParCompactionManager::push_recycled_stack_index(cm->region_stack_index());
+
+    if (TraceDynamicGCThreads) {
+      void* old_region_stack = (void*) cm->region_stack();
+      int old_region_stack_index = cm->region_stack_index();
+      gclog_or_tty->print_cr("Pushing region stack 0x%x/%d",
+        old_region_stack, old_region_stack_index);
+    }
+
+    cm->set_region_stack(NULL);
+    cm->set_region_stack_index((uint)max_uintx);
+  }
+}
+

@@ -240,8 +240,14 @@ public:
     //cgmin RegionData
     HeapWord* regionDest() const { return _regionDest; }
     HeapWord* objectDest() const { return _objectDest; }
+    HeapWord* lob() const { return _lob; }
     void set_regionDest(HeapWord* addr) { _regionDest = addr; }
     void set_objectDest(HeapWord* addr) { _objectDest = addr; }
+    void set_lob(HeapWord* lob) { _lob = lob; }
+    size_t ws() const { return _ws; }
+    void set_ws(size_t ws) { _ws = ws; }
+    unsigned char        buffer[4096]; //cgmin 4k buffer
+
 
     // Destination address of the region.
     HeapWord* destination() const { return _destination; }
@@ -353,6 +359,9 @@ public:
     //cgmin region data
     HeapWord*            _regionDest;
     HeapWord*            _objectDest;
+    size_t               _ws;
+    HeapWord*            _lob;
+
 
     HeapWord*            _destination;
     size_t               _source_region;
@@ -1024,6 +1033,10 @@ class PSParallelCompact : AllStatic {
 
  private:
 
+  //cgmin PSParallelCompact
+  static void partial_compact();
+  static void update_object();
+
   static void initialize_space_info();
 
   // Return true if details about individual phases should be printed.
@@ -1132,6 +1145,10 @@ class PSParallelCompact : AllStatic {
   // Move objects to new locations.
   static void compact_perm(ParCompactionManager* cm);
   static void compact();
+
+  //cgmin enqueue task
+  static void enqueue_all_region_partial_draining_tasks(GCTaskQueue* q, uint parallel_gc_threads);
+  static void enqueue_all_region_update_draining_tasks(GCTaskQueue* q, uint parallel_gc_threads);
 
   // Add available regions to the stack and draining tasks to the task queue.
   static void enqueue_region_draining_tasks(GCTaskQueue* q,
@@ -1291,6 +1308,9 @@ class PSParallelCompact : AllStatic {
   static void fill_and_update_region(ParCompactionManager* cm, size_t region) {
     fill_region(cm, region);
   }
+
+  static void partial_fill_region(ParCompactionManager* cm, size_t region); //cgmin
+  static void update_region(ParCompactionManager* cm, size_t region); //cgmin
 
   // Fill in the block table for the specified region.
   static void fill_blocks(size_t region_idx);
