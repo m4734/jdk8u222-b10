@@ -3558,13 +3558,69 @@ void PSParallelCompact::update_region(ParCompactionManager* cm, size_t region_id
 
 void PSParallelCompact::fill_region(ParCompactionManager* cm, size_t region_idx) //cgmin
 {
+
+  ParMarkBitMap* const bitmap = mark_bitmap();
   ParallelCompactData& sd = summary_data();
   RegionData* const region_ptr = sd.region(region_idx);
 
-  if (region_ptr->ws() == 0)
-    return;
-  Copy::aligned_conjoint_words((HeapWord*)region_ptr->buffer,region_ptr->objectDest(),region_ptr->lob()-region_ptr->objectDest()); // cgmin memmove
-  Copy::aligned_conjoint_words(region_ptr->objectDest(),region_ptr->regionDest(),region_ptr->ws()); // cgmin memmove
+  // Get the source region and related info.
+  size_t src_region_idx = region_ptr->source_region();
+  SpaceId src_space_id = space_id(sd.region_to_addr(src_region_idx));
+  HeapWord* src_space_top = _space_info[src_space_id].space()->top();
+  RegionData* src_region_ptr = sd.region(src_region_idx);
+  RegionData* top_region_ptr = sd.addr_to_region_ptr(sd.region_align_up(src_space_top));
+
+  do {
+
+    if (src_region_ptr->ws() > 0)
+    {
+    HeapWord* dest_addr = src_region_ptr->regionDest();
+    if (region_idx != sd.addr_to_region_idx(dest_addr))
+      break;
+
+  //cgmin memmove
+  size_t bufferSize = src_region_ptr->lob()-src_region_ptr->objectDest();
+   Copy::aligned_conjoint_words((HeapWord*)src_region_ptr->buffer,src_region_ptr->objectDest(),bufferSize);
+  Copy::aligned_conjoint_words(src_region_ptr->objectDest(),src_region_ptr->regionDest(),src_region_ptr->ws()-bufferSize);
+
+    }
+
+    if (src_region_idx != region_idx)
+    {
+      src_region_ptr->decrement_destination_count();
+      if (src_region_ptr < top_region_ptr && src_region_ptr->available() && src_region_ptr->claim())
+        cm->push_region(sd.region(src_region_ptr));
+    }
+    while (src_region_ptr < top_region_ptr && src_region_ptr->data_size() == 0)
+      ++src_region_ptr;
+
+    if (src_region_ptr >= top_region_ptr)
+    {
+      unsigned int space_id = src_space_id + 1;
+      ++space_id;
+      MutableSpace* src_space = _space_info[space_id].space();
+      src_space_top = src_space->top();
+      HeapWord* bottom = src_space->bottom();
+      RegionData* br = sd.addr_to_region_ptr(bottom);
+      RegionData* tr = sd.addr_to_region_ptr(sd.region_align_up(src_space_top));
+      do
+      {
+        if (br->destination() != bottom)
+        {
+          for (src_region_ptr = br; src_region_ptr < tr; ++src_region_ptr)
+          {
+            if (src_region_ptr->live_obj_size() > 0)
+            {
+              break;
+            }
+          }
+        }
+      }while(++space_id < last_space_id);
+      if (space_id >= last_space_id)
+        return; //????
+      src_space_id = SpaceId(space_id);
+    }
+  } while (true);
 
 }
 
