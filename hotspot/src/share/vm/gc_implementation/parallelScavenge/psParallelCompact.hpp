@@ -236,7 +236,7 @@ public:
   class RegionData
   {
   public:
-
+/*
     //cgmin RegionData
     HeapWord* regionDest() const { return _regionDest; }
     HeapWord* objectDest() const { return _objectDest; }
@@ -244,10 +244,10 @@ public:
     void set_regionDest(HeapWord* addr) { _regionDest = addr; }
     void set_objectDest(HeapWord* addr) { _objectDest = addr; }
     void set_lob(HeapWord* lob) { _lob = lob; }
-    size_t ws() const { return _ws; }
-    void set_ws(size_t ws) { _ws = ws; }
+//    size_t ws() const { return _ws; }
+//    void set_ws(size_t ws) { _ws = ws; }
     unsigned char        buffer[4096]; //cgmin 4k buffer
-
+*/
 
     // Destination address of the region.
     HeapWord* destination() const { return _destination; }
@@ -355,13 +355,13 @@ public:
     static const region_sz_t dc_claimed;         // Region has been claimed.
     static const region_sz_t dc_completed;       // Region has been completed.
     static const region_sz_t los_mask;           // Mask for live obj size.
-
+/*
     //cgmin region data
     HeapWord*            _regionDest;
     HeapWord*            _objectDest;
-    size_t               _ws;
+//    size_t               _ws;
     HeapWord*            _lob;
-
+*/
 
     HeapWord*            _destination;
     size_t               _source_region;
@@ -384,6 +384,25 @@ public:
     uint                 _pushed;   // 0 until region is pushed onto a stack
    private:
 #endif
+
+  public: //cgmin region data offset problem
+    HeapWord* regionDest() const { return _regionDest; }
+    HeapWord* objectDest() const { return _objectDest; }
+    HeapWord* lob() const { return _lob; }
+    void set_regionDest(HeapWord* addr) { _regionDest = addr; }
+    void set_objectDest(HeapWord* addr) { _objectDest = addr; }
+    void set_lob(HeapWord* lob) { _lob = lob; }
+    size_t ws() const { return _ws; }
+    void set_ws(size_t ws) { _ws = ws; }
+    unsigned char        buffer[4096]; //cgmin 4k buffer
+
+//cgmin region data
+    HeapWord*            _regionDest;
+    HeapWord*            _objectDest;
+    size_t               _ws;
+    HeapWord*            _lob;
+
+
   };
 
   // "Blocks" allow shorter sections of the bitmap to be searched.  Each Block
@@ -502,6 +521,7 @@ private:
   PSVirtualSpace* _block_vspace;
   BlockData*      _block_data;
   size_t          _block_count;
+
 };
 
 inline uint
@@ -1036,6 +1056,7 @@ class PSParallelCompact : AllStatic {
   //cgmin PSParallelCompact
   static void partial_compact();
   static void update_object();
+  static void temp_compact();
 
   static void initialize_space_info();
 

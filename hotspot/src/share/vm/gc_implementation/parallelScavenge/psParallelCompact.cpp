@@ -533,6 +533,7 @@ ParallelCompactData::summarize_dense_prefix(HeapWord* beg, HeapWord* end)
     _region_data[cur_region].set_regionDest(0);
     */
     _region_data[cur_region].set_ws(0);
+    _region_data[cur_region].set_regionDest(0);
 
     _region_data[cur_region].set_destination(addr);
     _region_data[cur_region].set_destination_count(0);
@@ -687,7 +688,6 @@ bool ParallelCompactData::summarize(SplitInfo& split_info,
   while (cur_region < end_region) {
 
 //cgmin summary
-//    size_t ws = =_region_data[cur_region].live_obj_size() + _region_data[cur_region].partial_obj_size(); // extending??
     HeapWord* region_beg = region_to_addr(cur_region);
     HeapWord* region_end = region_to_addr(cur_region+1);
     HeapWord* live_obj_beg = bitmap->find_obj_beg(region_beg,region_end);
@@ -697,48 +697,48 @@ bool ParallelCompactData::summarize(SplitInfo& split_info,
     unsigned long ul_lob = ((unsigned long)(live_obj_beg)*sizeof(HeapWord));
 //    HeapWord* live_obj_end = bitmap->find_obj_end(region_to_addr(cur_region+1));
     unsigned long ul_td = (ul_lob/4096)*4096+align;
+    size_t ws=0;
     if (ul_td > ul_lob)
       ul_td-=4096;
     HeapWord* target_dest = (HeapWord*)(ul_td/sizeof(HeapWord));
 
-/*
-    if (target_dest >= top_live)
-    {
-      _region_data[cur_region].set_objectDest(target_dest);
-//      _region_data[cur_region].set_regionDest(top_live);
-//      top_live+=_region_data[cur_region].live_obj_size();
-    }
-    else // failed because there is no enough space for alignment
-    {
-      _region_data[cur_region].set_objectDest(live_obj_beg);
-//      _region_data[cur_region].set_regionDest(top_live);
-    }
-*/
-//always success because of 4k buffer
-
     _region_data[cur_region].set_objectDest(target_dest);
     _region_data[cur_region].set_regionDest(top_live);
     _region_data[cur_region].set_lob(live_obj_beg);
+    
+      ws = _region_data[cur_region].live_obj_size();
+      
+      if (cur_region+1 < end_region && _region_data[cur_region+1].partial_obj_size() != 0)
+      {
+         ws+=(partial_obj_end(cur_region+1)-region_end);
+//       ws+=(partial_obj_end(cur_region+1)-_region_data[cur_region+1].partial_obj_addr());
+//        printf("%lu %lu\n",(partial_obj_end(cur_region+1)-_region_data[cur_region+1].partial_obj_addr()),oop(_region_data[cur_region+1].partial_obj_addr())->size());
+        }
 
-    size_t ws = _region_data[cur_region].live_obj_size();
-    if (cur_region+1 < end_region)
-      ws += (partial_obj_end(cur_region+1)-_region_data[cur_region+1].partial_obj_addr());// + _region_data[cur_region].partial_obj_size(); // extending??
+      HeapWord* addr = live_obj_beg;
+      size_t size=0;
+      while(addr < region_end)
+      {
+        size+=oop(addr)->size();
+        addr = bitmap->find_obj_beg(addr+1,region_end);
+      }
+      if (ws != size)
+      {
+        printf("iws %lu size %lu",ws,size);
+       if (cur_region+1 < end_region && _region_data[cur_region+1].partial_obj_size() != 0)
+               printf(" %lu",(partial_obj_end(cur_region+1)-_region_data[cur_region+1].partial_obj_addr()));
+printf("\n");
+        }
+
+
       _region_data[cur_region].set_ws(ws);
+//      printf("ws %lu \n",ws,_region_data[cur_region].live_obj_size(),(partial_obj_end(cur_region+1)-_region_data[cur_region+1].partial_obj_addr()));
+//      printf("Ws %lu\n",ws);
       top_live+=ws;
     }
     else // nothing to do in this region
     {
-    /*
-      _region_data[cur_region].set_objectDest(0);
-      _region_data[cur_region].set_regionDest(0);
-      */
       _region_data[cur_region].set_ws(0);
-    }
-
-    if (false)
-    {
-      ++cur_region;
-      continue;
     }
 
     // The destination must be set even if the region has no data.
@@ -2158,19 +2158,21 @@ bool PSParallelCompact::invoke_no_policy(bool maximum_heap_compaction) {
     // needed by the compaction for filling holes in the dense prefix.
     adjust_roots();
 
+printf("cs\n");
     partial_compact(); //cgmin
-
+printf("pc\n");
     compaction_start.update();
-    compact();
-
+//    compact();
+    temp_compact();
+printf("com\n");
     // need flush cgmin
 
     update_object(); //cgmin
-
+printf("uo\n");
     // Reset the mark bitmap, summary data, and do other bookkeeping.  Must be
     // done before resizing.
     post_compact();
-
+printf("ce\n");
     // Let the size policy know we're done
     size_policy->major_collection_end(old_gen->used_in_bytes(), gc_cause);
 
@@ -2590,10 +2592,13 @@ void PSParallelCompact::enqueue_all_region_partial_draining_tasks(GCTaskQueue* q
     SpaceInfo* const space_info = _space_info + id;
     MutableSpace* const space = space_info->space();
     HeapWord* const new_top = space_info->new_top();
+    HeapWord* const old_top = space->top();
 
     const size_t beg_region = sd.addr_to_region_idx(space_info->dense_prefix());
-    const size_t end_region =
-      sd.addr_to_region_idx(sd.region_align_up(new_top));
+//    const size_t end_region = sd.addr_to_region_idx(sd.region_align_up(new_top));
+    const size_t end_region = sd.addr_to_region_idx(sd.region_align_up(old_top));
+
+    printf("id %u br %lu er %lu\n",id,beg_region,end_region);
 
     for (size_t cur = end_region - 1; cur + 1 > beg_region; --cur) {
       if (true ) { //sd.region(cur)->claim_unsafe()) { // cgmin all region
@@ -2663,10 +2668,12 @@ void PSParallelCompact::enqueue_all_region_update_draining_tasks(GCTaskQueue* q,
     SpaceInfo* const space_info = _space_info + id;
     MutableSpace* const space = space_info->space();
     HeapWord* const new_top = space_info->new_top();
+    HeapWord* const old_top = space->top();
 
     const size_t beg_region = sd.addr_to_region_idx(space_info->dense_prefix());
-    const size_t end_region =
-      sd.addr_to_region_idx(sd.region_align_up(new_top));
+//    const size_t end_region = sd.addr_to_region_idx(sd.region_align_up(new_top));
+    const size_t end_region = sd.addr_to_region_idx(sd.region_align_up(old_top));
+printf("old %lu new %lu\n", sd.addr_to_region_idx(sd.region_align_up(old_top)), sd.addr_to_region_idx(sd.region_align_up(new_top)));
 
     for (size_t cur = end_region - 1; cur + 1 > beg_region; --cur) {
       if (true ) { //sd.region(cur)->claim_unsafe()) { // cgmin all region
@@ -2907,8 +2914,8 @@ void PSParallelCompact::partial_compact() { //cgmin
 
   ParallelScavengeHeap* heap = (ParallelScavengeHeap*)Universe::heap();
   assert(heap->kind() == CollectedHeap::ParallelScavengeHeap, "Sanity");
-//  PSOldGen* old_gen = heap->old_gen();
-//  old_gen->start_array()->reset();
+  PSOldGen* old_gen = heap->old_gen();
+  old_gen->start_array()->reset();
   uint parallel_gc_threads = heap->gc_task_manager()->workers();
   uint active_gc_threads = heap->gc_task_manager()->active_workers();
   TaskQueueSetSuper* qset = ParCompactionManager::region_array();
@@ -2916,7 +2923,7 @@ void PSParallelCompact::partial_compact() { //cgmin
 
   GCTaskQueue* q = GCTaskQueue::create();
   enqueue_all_region_partial_draining_tasks(q, active_gc_threads);
-//  enqueue_dense_prefix_tasks(q, active_gc_threads);
+  enqueue_dense_prefix_tasks(q, active_gc_threads);
 //  enqueue_region_stealing_tasks(q, &terminator, active_gc_threads); //cgmin may need steal
 
   {
@@ -2964,6 +2971,46 @@ void PSParallelCompact::update_object() { //cgmin
   }
 
 
+}
+
+void PSParallelCompact::temp_compact()
+{
+  for (unsigned int id = old_space_id; id < last_space_id; ++id)
+  {
+  ParallelCompactData& sd = summary_data();
+  SpaceInfo si = _space_info[id];
+  HeapWord* new_top_addr = sd.region_align_up(si.new_top());
+  HeapWord* old_top_addr = sd.region_align_up(si.space()->top());
+    const size_t beg_region = sd.addr_to_region_idx(si.dense_prefix());
+//  const size_t beg_region = sd.addr_to_region_idx(si.space()->bottom());
+//  const size_t beg_region = sd.addr_to_region_idx(si.space()->dense_prefix());
+  const size_t new_top_region = sd.addr_to_region_idx(new_top_addr);
+  const size_t old_top_region = sd.addr_to_region_idx(old_top_addr);
+
+  idx_t cur_region;
+  for (cur_region = beg_region; cur_region < old_top_region; ++cur_region) {
+
+    RegionData* src_region_ptr = sd.region(cur_region);
+//printf("idx %lu src %p dst %p size %lu\n",cur_region,src_region_ptr->objectDest(),src_region_ptr->regionDest(),src_region_ptr->ws());
+
+    src_region_ptr->set_destination_count(0);
+    if (cur_region < new_top_region)
+    {
+      src_region_ptr->claim();
+      src_region_ptr->set_completed();
+    }
+    
+
+//    const RegionData* const c = sd.region(cur_region);
+    if (src_region_ptr->ws() == 0)
+      continue;
+  size_t bufferSize = src_region_ptr->lob()-src_region_ptr->objectDest();
+   Copy::conjoint_jbytes((HeapWord*)src_region_ptr->buffer,src_region_ptr->regionDest(),bufferSize*sizeof(HeapWord*));
+  Copy::conjoint_jbytes(src_region_ptr->lob(),src_region_ptr->regionDest()+bufferSize,(src_region_ptr->ws()-bufferSize)*sizeof(HeapWord*));
+
+  }
+
+  }
 }
 
 void PSParallelCompact::compact() {
@@ -3481,48 +3528,67 @@ void PSParallelCompact::partial_fill_region(ParCompactionManager* cm, size_t reg
   ParallelCompactData& sd = summary_data();
   RegionData* const region_ptr = sd.region(region_idx);
 
-  if (region_ptr->ws() == 0)
+//printf("region_idx %d ws %u\n",region_idx,region_ptr->live_obj_size());
+
+if (region_ptr->ws() == 0 || region_ptr->regionDest() == 0)
     return;
 
   HeapWord* region_beg = sd.region_to_addr(region_idx);
   HeapWord* region_end = sd.region_to_addr(region_idx+1);
-  idx_t cur_beg = bitmap->addr_to_bit(region_beg);
   idx_t range_end = bitmap->addr_to_bit(region_end);
+//  const idx_t search_end = BitMap::word_align_up(range_end);
+
+  HeapWord* dest = region_ptr->objectDest();
+  SpaceId _space_id = space_id(dest);
+//  const idx_t search_end = bitmap->addr_to_bit(sd.region_align_up(_space_info[_space_id].space()->top()));
+  const idx_t search_end = bitmap->addr_to_bit(bitmap->region_end());
   idx_t cur_end;
   size_t size;
-  HeapWord* dest = region_ptr->objectDest();
-  HeapWord* first_addr = bitmap->find_obj_end(region_beg,region_end);
+  HeapWord* first_addr = bitmap->find_obj_beg(region_beg,region_end);
   HeapWord* src;
   HeapWord* buffer = (HeapWord*)region_ptr->buffer;
+  idx_t cur_beg = bitmap->addr_to_bit(first_addr);
+//  printf("rb %p re %p\n",region_beg,region_end);
   while (cur_beg < range_end) {
-    cur_end = bitmap->find_obj_end(cur_beg,range_end);
+    cur_end = bitmap->find_obj_end(cur_beg,search_end);
     size = bitmap->obj_size(cur_beg,cur_end);
     src = bitmap->bit_to_addr(cur_beg);
-
-    if (first_addr > src)
+//    if (oop(src)->size() != size)
+//      printf("se %p\n",src);
+//    oop(src)->update_contents(cm);
+    if (first_addr > dest)
     {
-      if (first_addr < src+size)
+      if (first_addr < dest+size)
       {
-        size_t remain_size = first_addr-src;
-        Copy::aligned_conjoint_words(src,buffer,remain_size);
-        size-=remain_size;
-        Copy::aligned_conjoint_words(src,dest,size);
-        dest+=size;
+        size_t remain_size = first_addr-dest;
+//        Copy::aligned_conjoint_words(src,buffer,remain_size);
+        Copy::conjoint_jbytes(src,buffer,remain_size*sizeof(HeapWord*));
+//        size-=remain_size;
+//        Copy::aligned_conjoint_words(src,dest,size);
+        Copy::conjoint_jbytes(src+remain_size,first_addr,(size-remain_size)*sizeof(HeapWord*));
+//        dest+=size;
       }
       else
       {
-         Copy::aligned_conjoint_words(src,(HeapWord*)buffer,size);
+//         Copy::aligned_conjoint_words(src,(HeapWord*)buffer,size);
+         Copy::conjoint_jbytes(src,(HeapWord*)buffer,size*sizeof(HeapWord*));
          buffer+=size;
       }
     }
     else
     {
-      Copy::aligned_conjoint_words(src,dest,size);
-      dest+=size;
+//      Copy::aligned_conjoint_words(src,dest,size);
+        Copy::conjoint_jbytes(src,dest,size*sizeof(HeapWord*));
+//      dest+=size;
     }
-    cur_beg = bitmap->find_obj_beg(cur_end+1,range_end);
-  }
 
+    dest+=size;
+//    if (cur_end >= search_end)
+//      break;
+    cur_beg = bitmap->find_obj_beg(cur_beg+1,range_end);
+  }
+//  if (dest-region_ptr->objectDest() != region_ptr->ws())
+//    printf("de %lu %p %p %lu\n",region_idx,dest,region_ptr->objectDest(),region_ptr->ws());
 
 }
 
@@ -3531,7 +3597,14 @@ void PSParallelCompact::update_region(ParCompactionManager* cm, size_t region_id
 
   ParallelCompactData& sd = summary_data();
   RegionData* const region_ptr = sd.region(region_idx);
-
+/*
+  if (region_ptr->data_size() != 0)
+  {
+    region_ptr->set_destination_count(0);
+    region_ptr->claim();
+    region_ptr->set_completed();
+    }
+*/
   if (region_ptr->ws() == 0)
     return;
 
@@ -3544,13 +3617,17 @@ void PSParallelCompact::update_region(ParCompactionManager* cm, size_t region_id
   HeapWord* range_end = range_beg+region_ptr->ws();
   size_t size;
   HeapWord* addr=range_beg;
+//  printf("ri %lu rb %p re %p",region_idx,range_beg,range_end);
   while (addr < range_end) {
-
+//printf(" %p ",addr);
+//  if (start_array != NULL)
     start_array->allocate_block(addr);
     oop(addr)->update_contents(cm);
 
     addr+=oop(addr)->size();
   }
+//  printf(" %lu end\n",region_idx);
+
 }
 
 
@@ -3558,7 +3635,6 @@ void PSParallelCompact::update_region(ParCompactionManager* cm, size_t region_id
 
 void PSParallelCompact::fill_region(ParCompactionManager* cm, size_t region_idx) //cgmin
 {
-
   ParMarkBitMap* const bitmap = mark_bitmap();
   ParallelCompactData& sd = summary_data();
   RegionData* const region_ptr = sd.region(region_idx);
@@ -3569,59 +3645,103 @@ void PSParallelCompact::fill_region(ParCompactionManager* cm, size_t region_idx)
   HeapWord* src_space_top = _space_info[src_space_id].space()->top();
   RegionData* src_region_ptr = sd.region(src_region_idx);
   RegionData* top_region_ptr = sd.addr_to_region_ptr(sd.region_align_up(src_space_top));
+  RegionData* new_top_region_ptr = sd.addr_to_region_ptr(sd.region_align_up(_space_info[src_space_id].new_top()));
 
-  do {
+printf("fr dst idx %lu rb %p re %p\n",region_idx,sd.region_to_addr(region_idx),sd.region_to_addr(region_idx+1));
+//printf("d %p i %lu\n",src_region_ptr->destination(),sd.addr_to_region_idx(src_region_ptr->destination()));
+  while(sd.addr_to_region_idx(src_region_ptr->destination()) <= region_idx) {
 
+printf("dr %lu sr %lu ws %lu rd %p\n",region_idx,src_region_idx,src_region_ptr->data_size(),src_region_ptr->destination());
     if (src_region_ptr->ws() > 0)
     {
     HeapWord* dest_addr = src_region_ptr->regionDest();
-    if (region_idx != sd.addr_to_region_idx(dest_addr))
+    /*
+    if (region_idx < sd.addr_to_region_idx(dest_addr))
+    {
+      if (src_region_idx != region_idx && sd.addr_to_region_idx(src_region_ptr->destination()) == region_idx)
+      {
+      printf("d(%lu)",src_region_idx);
+      src_region_ptr->decrement_destination_count();
+      if (src_region_ptr < new_top_region_ptr && src_region_ptr->available() && src_region_ptr->claim())
+        cm->push_region(sd.region(src_region_ptr));
+      }
+      printf("out\n");
       break;
-
+      }
+      */
+    if (region_idx == sd.addr_to_region_idx(dest_addr))
+    {
   //cgmin memmove
   size_t bufferSize = src_region_ptr->lob()-src_region_ptr->objectDest();
-   Copy::aligned_conjoint_words((HeapWord*)src_region_ptr->buffer,src_region_ptr->objectDest(),bufferSize);
-  Copy::aligned_conjoint_words(src_region_ptr->objectDest(),src_region_ptr->regionDest(),src_region_ptr->ws()-bufferSize);
+//   Copy::aligned_conjoint_words((HeapWord*)src_region_ptr->buffer,src_region_ptr->objectDest(),bufferSize);
+//   Copy::conjoint_jbytes((HeapWord*)src_region_ptr->buffer,src_region_ptr->objectDest(),bufferSize*sizeof(HeapWord*));
+   Copy::conjoint_jbytes((HeapWord*)src_region_ptr->buffer,src_region_ptr->regionDest(),bufferSize*sizeof(HeapWord*));
 
+//  Copy::aligned_conjoint_words(src_region_ptr->objectDest(),src_region_ptr->regionDest(),src_region_ptr->ws()-bufferSize);
+//  Copy::conjoint_jbytes(src_region_ptr->objectDest(),src_region_ptr->regionDest(),src_region_ptr->ws()-bufferSize*sizeof(HeapWord*));
+  Copy::conjoint_jbytes(src_region_ptr->lob(),src_region_ptr->regionDest()+bufferSize,(src_region_ptr->ws()-bufferSize)*sizeof(HeapWord*));
+
+/*
+    if (src_region_idx != region_idx)
+      decrement_destination_counts(cm,src_space_id,src_region_idx,src_region_ptr->lob()+src_region_ptr->ws());
+    else
+      decrement_destination_counts(cm,src_space_id,src_region_idx+1,src_region_ptr->lob()+src_region_ptr->ws());
+  */    
+}
     }
-
+    
     if (src_region_idx != region_idx)
     {
+//      printf("d(%lu)d",src_region_idx);
+    //  if (src_region_ptr->destination_count() == 0)
+      //  printf("??? dst %lu src %lu\n",region_idx,src_region_idx);
       src_region_ptr->decrement_destination_count();
-      if (src_region_ptr < top_region_ptr && src_region_ptr->available() && src_region_ptr->claim())
+      if (src_region_ptr < new_top_region_ptr && src_region_ptr->available() && src_region_ptr->claim())
         cm->push_region(sd.region(src_region_ptr));
     }
+    
+    ++src_region_ptr;
     while (src_region_ptr < top_region_ptr && src_region_ptr->data_size() == 0)
       ++src_region_ptr;
 
     if (src_region_ptr >= top_region_ptr)
     {
+    printf("space\n");
       unsigned int space_id = src_space_id + 1;
       ++space_id;
+      while (space_id < last_space_id)
+      {
       MutableSpace* src_space = _space_info[space_id].space();
       src_space_top = src_space->top();
       HeapWord* bottom = src_space->bottom();
       RegionData* br = sd.addr_to_region_ptr(bottom);
       RegionData* tr = sd.addr_to_region_ptr(sd.region_align_up(src_space_top));
-      do
-      {
+
         if (br->destination() != bottom)
         {
           for (src_region_ptr = br; src_region_ptr < tr; ++src_region_ptr)
           {
-            if (src_region_ptr->live_obj_size() > 0)
+            if (src_region_ptr->data_size() > 0)
             {
               break;
             }
           }
         }
-      }while(++space_id < last_space_id);
+        if (src_region_ptr < tr)
+          break;
+        ++space_id;
+      }
       if (space_id >= last_space_id)
-        return; //????
+        break; //????
       src_space_id = SpaceId(space_id);
-    }
-  } while (true);
+ src_space_top = _space_info[src_space_id].space()->top();
+  top_region_ptr = sd.addr_to_region_ptr(sd.region_align_up(src_space_top));
+  new_top_region_ptr = sd.addr_to_region_ptr(sd.region_align_up(_space_info[src_space_id].new_top()));
 
+    }
+    src_region_idx = sd.region(src_region_ptr); 
+  }// while (true);
+  region_ptr->set_completed();
 }
 
 void PSParallelCompact::fill_blocks(size_t region_idx)
