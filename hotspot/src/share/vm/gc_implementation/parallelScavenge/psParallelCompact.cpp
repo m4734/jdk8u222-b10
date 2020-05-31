@@ -2912,6 +2912,8 @@ void PSParallelCompact::write_block_fill_histogram(outputStream* const out)
 
 void PSParallelCompact::partial_compact() { //cgmin
 
+GCTraceTime tm("compaction phase", print_phases(), true, &_gc_timer, _gc_tracer.gc_id());
+
   ParallelScavengeHeap* heap = (ParallelScavengeHeap*)Universe::heap();
   assert(heap->kind() == CollectedHeap::ParallelScavengeHeap, "Sanity");
   PSOldGen* old_gen = heap->old_gen();
@@ -2958,7 +2960,7 @@ void PSParallelCompact::update_object() { //cgmin
 //  enqueue_region_stealing_tasks(q, &terminator, active_gc_threads); //cgmin may need steal
 
   {
-    GCTraceTime tm_pc("par compact", print_phases(), true, &_gc_timer, _gc_tracer.gc_id());
+//    GCTraceTime tm_pc("par compact", print_phases(), true, &_gc_timer, _gc_tracer.gc_id());
 
     gc_task_manager()->execute_and_wait(q);
 
@@ -2991,7 +2993,6 @@ void PSParallelCompact::temp_compact()
   for (cur_region = beg_region; cur_region < old_top_region; ++cur_region) {
 
     RegionData* src_region_ptr = sd.region(cur_region);
-//printf("idx %lu src %p dst %p size %lu\n",cur_region,src_region_ptr->objectDest(),src_region_ptr->regionDest(),src_region_ptr->ws());
 
     src_region_ptr->set_destination_count(0);
     if (cur_region < new_top_region)
@@ -3003,10 +3004,16 @@ void PSParallelCompact::temp_compact()
 
 //    const RegionData* const c = sd.region(cur_region);
     if (src_region_ptr->ws() == 0)
-      continue;
+      continue;      
   size_t bufferSize = src_region_ptr->lob()-src_region_ptr->objectDest();
+  if (bufferSize < src_region_ptr->ws())
+  {
+//printf("idx %lu src %p dst %p size %lu buffer %lu\n",cur_region,src_region_ptr->objectDest(),src_region_ptr->regionDest(),src_region_ptr->ws(),bufferSize);
    Copy::conjoint_jbytes((HeapWord*)src_region_ptr->buffer,src_region_ptr->regionDest(),bufferSize*sizeof(HeapWord*));
   Copy::conjoint_jbytes(src_region_ptr->lob(),src_region_ptr->regionDest()+bufferSize,(src_region_ptr->ws()-bufferSize)*sizeof(HeapWord*));
+  }
+  else
+   Copy::conjoint_jbytes((HeapWord*)src_region_ptr->buffer,src_region_ptr->regionDest(),src_region_ptr->ws()*sizeof(HeapWord*));
 
   }
 
