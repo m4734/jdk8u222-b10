@@ -533,7 +533,7 @@ ParallelCompactData::summarize_dense_prefix(HeapWord* beg, HeapWord* end)
     _region_data[cur_region].set_regionDest(0);
     */
     _region_data[cur_region].set_ws(0);
-    _region_data[cur_region].set_regionDest(0);
+//    _region_data[cur_region].set_regionDest(0);
 
     _region_data[cur_region].set_destination(addr);
     _region_data[cur_region].set_destination_count(0);
@@ -685,13 +685,17 @@ bool ParallelCompactData::summarize(SplitInfo& split_info,
   const size_t end_region = addr_to_region_idx(region_align_up(source_end));
 
   HeapWord *dest_addr = target_beg;
+  printf("region %lu start %p\n",cur_region,top_live);
+
+  top_live+=_region_data[cur_region].partial_obj_size();
+
   while (cur_region < end_region) {
 
 //cgmin summary
     HeapWord* region_beg = region_to_addr(cur_region);
     HeapWord* region_end = region_to_addr(cur_region+1);
     HeapWord* live_obj_beg = bitmap->find_obj_beg(region_beg,region_end);
-    if (live_obj_beg != region_end)
+    if (live_obj_beg < region_end)
     {
     unsigned long align = ((unsigned long)(top_live)*sizeof(HeapWord))%4096;
     unsigned long ul_lob = ((unsigned long)(live_obj_beg)*sizeof(HeapWord));
@@ -701,6 +705,13 @@ bool ParallelCompactData::summarize(SplitInfo& split_info,
     if (ul_td > ul_lob)
       ul_td-=4096;
     HeapWord* target_dest = (HeapWord*)(ul_td/sizeof(HeapWord));
+
+    if (target_dest < top_live)
+      printf("???\n");
+    if (target_dest > live_obj_beg)
+      printf("???2\n");
+    if (live_obj_beg - target_dest >= 512)
+      printf("???4\n");
 
     _region_data[cur_region].set_objectDest(target_dest);
     _region_data[cur_region].set_regionDest(top_live);
@@ -750,6 +761,7 @@ printf("\n");
       // at which the source space can be 'split' so that part is copied to the
       // target space and the rest is copied elsewhere.
       if (dest_addr + words > target_end) {
+      printf("split!!\n"); //cgmin space overflow split check
         assert(source_next != NULL, "source_next is NULL when splitting");
         *source_next = summarize_split_space(cur_region, split_info, dest_addr,
                                              target_end, target_next);
@@ -1441,6 +1453,9 @@ HeapWord*
 PSParallelCompact::compute_dense_prefix(const SpaceId id,
                                         bool maximum_compaction)
 {
+
+//  return _space_info[id].space()->bottom(); //cgmin
+
   if (ParallelOldGCSplitALot) {
     if (_space_info[id].dense_prefix() != _space_info[id].space()->bottom()) {
       // The value was chosen to provoke splitting a young gen space; use it.
@@ -2167,7 +2182,7 @@ printf("pc\n");
 printf("com\n");
     // need flush cgmin
 
-    update_object(); //cgmin
+//    update_object(); //cgmin
 printf("uo\n");
     // Reset the mark bitmap, summary data, and do other bookkeeping.  Must be
     // done before resizing.
@@ -2588,7 +2603,7 @@ void PSParallelCompact::enqueue_all_region_partial_draining_tasks(GCTaskQueue* q
   which = 0;
   // id + 1 is used to test termination so unsigned  can
   // be used with an old_space_id == 0.
-  for (unsigned int id = to_space_id; id + 1 > old_space_id; --id) {
+  for (unsigned int id = last_space_id-1; id + 1 > old_space_id; --id) {
     SpaceInfo* const space_info = _space_info + id;
     MutableSpace* const space = space_info->space();
     HeapWord* const new_top = space_info->new_top();
@@ -2598,7 +2613,7 @@ void PSParallelCompact::enqueue_all_region_partial_draining_tasks(GCTaskQueue* q
 //    const size_t end_region = sd.addr_to_region_idx(sd.region_align_up(new_top));
     const size_t end_region = sd.addr_to_region_idx(sd.region_align_up(old_top));
 
-    printf("id %u br %lu er %lu\n",id,beg_region,end_region);
+    printf("partial %lu %lu-1\n",beg_region,end_region);
 
     for (size_t cur = end_region - 1; cur + 1 > beg_region; --cur) {
       if (true ) { //sd.region(cur)->claim_unsafe()) { // cgmin all region
@@ -2664,7 +2679,7 @@ void PSParallelCompact::enqueue_all_region_update_draining_tasks(GCTaskQueue* q,
   which = 0;
   // id + 1 is used to test termination so unsigned  can
   // be used with an old_space_id == 0.
-  for (unsigned int id = to_space_id; id + 1 > old_space_id; --id) {
+  for (unsigned int id = last_space_id-1; id + 1 > old_space_id; --id) {
     SpaceInfo* const space_info = _space_info + id;
     MutableSpace* const space = space_info->space();
     HeapWord* const new_top = space_info->new_top();
@@ -2673,8 +2688,8 @@ void PSParallelCompact::enqueue_all_region_update_draining_tasks(GCTaskQueue* q,
     const size_t beg_region = sd.addr_to_region_idx(space_info->dense_prefix());
 //    const size_t end_region = sd.addr_to_region_idx(sd.region_align_up(new_top));
     const size_t end_region = sd.addr_to_region_idx(sd.region_align_up(old_top));
-printf("old %lu new %lu\n", sd.addr_to_region_idx(sd.region_align_up(old_top)), sd.addr_to_region_idx(sd.region_align_up(new_top)));
-
+//printf("old %lu new %lu\n", sd.addr_to_region_idx(sd.region_align_up(old_top)), sd.addr_to_region_idx(sd.region_align_up(new_top)));
+    printf("update %lu %lu-1\n",beg_region,end_region);
     for (size_t cur = end_region - 1; cur + 1 > beg_region; --cur) {
       if (true ) { //sd.region(cur)->claim_unsafe()) { // cgmin all region
         ParCompactionManager::region_list_push(which, cur);
@@ -2935,9 +2950,9 @@ GCTraceTime tm("compaction phase", print_phases(), true, &_gc_timer, _gc_tracer.
 
 #ifdef  ASSERT
     // Verify that all regions have been processed before the deferred updates.
-    for (unsigned int id = old_space_id; id < last_space_id; ++id) {
-      verify_complete(SpaceId(id));
-    }
+//    for (unsigned int id = old_space_id; id < last_space_id; ++id) {
+//      verify_complete(SpaceId(id));
+//    }
 #endif
   }
 
@@ -2977,6 +2992,7 @@ void PSParallelCompact::update_object() { //cgmin
 
 void PSParallelCompact::temp_compact()
 {
+size_t sum=0;
   for (unsigned int id = old_space_id; id < last_space_id; ++id)
   {
   ParallelCompactData& sd = summary_data();
@@ -2989,7 +3005,19 @@ void PSParallelCompact::temp_compact()
   const size_t new_top_region = sd.addr_to_region_idx(new_top_addr);
   const size_t old_top_region = sd.addr_to_region_idx(old_top_addr);
 
+  ObjectStartArray* start_array = si.start_array();
+    ParCompactionManager* cm = ParCompactionManager::manager_array(0);
+
+
   idx_t cur_region;
+  printf("temp compact %lu %lu-1\n",beg_region,old_top_region);
+/*
+  if (sd.region(beg_region)->deferred_obj_addr() != NULL)
+  {
+    RegionData* region_ptr = sd.region(beg_region);
+    printf("???3 br %lu rd %p od %p ws %lu deffered %p\n",beg_region,region_ptr->regionDest(),region_ptr->objectDest(),region_ptr->ws(),region_ptr->deferred_obj_addr());
+    }
+    */
   for (cur_region = beg_region; cur_region < old_top_region; ++cur_region) {
 
     RegionData* src_region_ptr = sd.region(cur_region);
@@ -3006,18 +3034,31 @@ void PSParallelCompact::temp_compact()
     if (src_region_ptr->ws() == 0)
       continue;      
   size_t bufferSize = src_region_ptr->lob()-src_region_ptr->objectDest();
+  if (src_region_ptr->objectDest() < src_region_ptr->regionDest())
+    printf("underflow error %lu\n",cur_region);
   if (bufferSize < src_region_ptr->ws())
   {
-//printf("idx %lu src %p dst %p size %lu buffer %lu\n",cur_region,src_region_ptr->objectDest(),src_region_ptr->regionDest(),src_region_ptr->ws(),bufferSize);
    Copy::conjoint_jbytes((HeapWord*)src_region_ptr->buffer,src_region_ptr->regionDest(),bufferSize*sizeof(HeapWord*));
   Copy::conjoint_jbytes(src_region_ptr->lob(),src_region_ptr->regionDest()+bufferSize,(src_region_ptr->ws()-bufferSize)*sizeof(HeapWord*));
   }
   else
    Copy::conjoint_jbytes((HeapWord*)src_region_ptr->buffer,src_region_ptr->regionDest(),src_region_ptr->ws()*sizeof(HeapWord*));
+   HeapWord* addr = src_region_ptr->regionDest();
+   HeapWord* end_addr = addr+src_region_ptr->ws();
+   while(addr<end_addr)
+   {
+    if (start_array != NULL)
+    start_array->allocate_block(addr);
+//    oop(addr)->update_contents(cm);
+    sum+=oop(addr)->size();
+    addr+=oop(addr)->size();
+   }
 
+//printf("idx %lu src %p dst %p size %lu buffer %lu\n",cur_region,src_region_ptr->objectDest(),src_region_ptr->regionDest(),src_region_ptr->ws(),bufferSize);
   }
 
   }
+  printf("old %lu sum %lu\n",_space_info[old_space_id].new_top()-_space_info[old_space_id].dense_prefix(),sum);
 }
 
 void PSParallelCompact::compact() {
@@ -3537,13 +3578,23 @@ void PSParallelCompact::partial_fill_region(ParCompactionManager* cm, size_t reg
 
 //printf("region_idx %d ws %u\n",region_idx,region_ptr->live_obj_size());
 
-if (region_ptr->ws() == 0 || region_ptr->regionDest() == 0)
+if (region_ptr->ws() == 0)
     return;
 
   HeapWord* region_beg = sd.region_to_addr(region_idx);
   HeapWord* region_end = sd.region_to_addr(region_idx+1);
   idx_t range_end = bitmap->addr_to_bit(region_end);
 //  const idx_t search_end = BitMap::word_align_up(range_end);
+
+unsigned int id;
+for (id = old_space_id; id < last_space_id; ++id) {
+    if (_space_info[id].space()->contains(region_ptr->objectDest())) {
+    break;
+    }
+  }
+
+  if (id >= last_space_id)
+    printf("od error %lu %p\n",region_idx,region_ptr->objectDest());
 
   HeapWord* dest = region_ptr->objectDest();
   SpaceId _space_id = space_id(dest);
@@ -3558,8 +3609,23 @@ if (region_ptr->ws() == 0 || region_ptr->regionDest() == 0)
 //  printf("rb %p re %p\n",region_beg,region_end);
   while (cur_beg < range_end) {
     cur_end = bitmap->find_obj_end(cur_beg,search_end);
-    size = bitmap->obj_size(cur_beg,cur_end);
+//    size = bitmap->obj_size(cur_beg,cur_end);
     src = bitmap->bit_to_addr(cur_beg);
+    size = oop(src)->size();
+
+    HeapWord* nd= dest-region_ptr->objectDest()+region_ptr->regionDest();
+    if (sd.calc_new_pointer(src) != nd)
+    {
+    printf("wrong dest new %p src %p nd %p\n",sd.calc_new_pointer(src),src,nd);
+    printf("dp %p dd %p idx %lu rd %p od %p lob %p\n",_space_info[id].dense_prefix(),region_ptr->destination(),region_idx,region_ptr->regionDest(),region_ptr->objectDest(),region_ptr->lob());
+    printf("ds %lu po %lu\n",region_ptr->data_size(),region_ptr->partial_obj_size());
+    assert(0,"ccc");
+    }
+    oop(src)->update_contents(cm);
+
+
+    if (first_addr - region_ptr->objectDest() >= 512)
+      printf("eee\n");
 //    if (oop(src)->size() != size)
 //      printf("se %p\n",src);
 //    oop(src)->update_contents(cm);
@@ -3613,7 +3679,11 @@ void PSParallelCompact::update_region(ParCompactionManager* cm, size_t region_id
     }
 */
   if (region_ptr->ws() == 0)
+  {
+    if (region_ptr->live_obj_size() > 0)
+  printf("??? update all dead %lu\n",region_idx);
     return;
+    }
 
   // Get the items needed to construct the closure.
   HeapWord* dest_addr = region_ptr->regionDest();
@@ -3627,14 +3697,14 @@ void PSParallelCompact::update_region(ParCompactionManager* cm, size_t region_id
 //  printf("ri %lu rb %p re %p",region_idx,range_beg,range_end);
   while (addr < range_end) {
 //printf(" %p ",addr);
-//  if (start_array != NULL)
+  if (start_array != NULL)
     start_array->allocate_block(addr);
     oop(addr)->update_contents(cm);
 
     addr+=oop(addr)->size();
   }
 //  printf(" %lu end\n",region_idx);
-
+region_ptr->set_ws(0);
 }
 
 
@@ -3642,6 +3712,8 @@ void PSParallelCompact::update_region(ParCompactionManager* cm, size_t region_id
 
 void PSParallelCompact::fill_region(ParCompactionManager* cm, size_t region_idx) //cgmin
 {
+printf("xxx\n");
+return;
   ParMarkBitMap* const bitmap = mark_bitmap();
   ParallelCompactData& sd = summary_data();
   RegionData* const region_ptr = sd.region(region_idx);
