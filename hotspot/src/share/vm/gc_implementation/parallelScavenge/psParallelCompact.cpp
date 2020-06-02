@@ -703,14 +703,14 @@ bool ParallelCompactData::summarize(SplitInfo& split_info,
     HeapWord* live_obj_beg = bitmap->find_obj_beg(region_beg,region_end);
     if (live_obj_beg < region_end)
     {
-    unsigned long align = ((unsigned long)(top_live)*sizeof(HeapWord))%4096;
-    unsigned long ul_lob = ((unsigned long)(live_obj_beg)*sizeof(HeapWord));
+    unsigned long align = ((unsigned long)(top_live))%4096;
+    unsigned long ul_lob = ((unsigned long)(live_obj_beg));
 //    HeapWord* live_obj_end = bitmap->find_obj_end(region_to_addr(cur_region+1));
     unsigned long ul_td = (ul_lob/4096)*4096+align;
     size_t ws=0;
     if (ul_td > ul_lob)
       ul_td-=4096;
-    HeapWord* target_dest = (HeapWord*)(ul_td/sizeof(HeapWord));
+    HeapWord* target_dest = (HeapWord*)(ul_td);
 /*
     if (target_dest < top_live)
       printf("???\n");
@@ -2223,22 +2223,38 @@ while(ca+co < ce)
 }
   printf("???\n");
 */
-
-
+if (false)
+{
+timespec ts1,ts2,ts3,ts4;
 //printf("cs\n");
+clock_gettime(CLOCK_MONOTONIC,&ts1);
     partial_compact(); //cgmin
 //printf("pc\n");
     compaction_start.update();
 //    compact();
+clock_gettime(CLOCK_MONOTONIC,&ts2);
     temp_compact();
 //printf("com\n");
-
-
+clock_gettime(CLOCK_MONOTONIC,&ts3);
     update_object(); //cgmin
 
+clock_gettime(CLOCK_MONOTONIC,&ts4);
 //printf("uo\n");
-
+printf("ts p %lu\n",(ts2.tv_sec-ts1.tv_sec)*1000000000+ts2.tv_nsec-ts1.tv_nsec);
+printf("ts t %lu\n",(ts3.tv_sec-ts2.tv_sec)*1000000000+ts3.tv_nsec-ts2.tv_nsec);
+printf("ts u %lu\n",(ts4.tv_sec-ts3.tv_sec)*1000000000+ts4.tv_nsec-ts3.tv_nsec);
+printf("ts s %lu\n",(ts4.tv_sec-ts1.tv_sec)*1000000000+ts4.tv_nsec-ts1.tv_nsec);
+}
+else
+{
+    partial_compact(); //cgmin
+    compaction_start.update();
+//    compact();
+    temp_compact();
+    update_object(); //cgmin
+}
     // need flush cgmin
+
  if (false)
  {
 size_t i,aa,bb,id;
@@ -3249,7 +3265,42 @@ h2o = 0; //cgmin h2o
   if (bufferSize < src_region_ptr->ws())
   {
    Copy::conjoint_jbytes((HeapWord*)src_region_ptr->buffer,src_region_ptr->regionDest()/*+h2o*/,bufferSize*sizeof(HeapWord));
+    size_t sa = (src_region_ptr->ws()-bufferSize)*sizeof(HeapWord);
+   if (sa < 4096*5) //cgmin syscall
+   {
   Copy::conjoint_jbytes(src_region_ptr->lob()/*+h2o*/,src_region_ptr->regionDest()+bufferSize/*+h2o*/,(src_region_ptr->ws()-bufferSize)*sizeof(HeapWord));
+  }
+  else
+  {
+  /*
+    if ((unsigned long)src_region_ptr->lob() % 4096 != (unsigned long)(src_region_ptr->regionDest()+bufferSize) % 4096)
+      assert(0,"align");
+      */
+    HeapWord* ts=src_region_ptr->lob()/*+h2o*/;
+    HeapWord* td=src_region_ptr->regionDest()+bufferSize;
+    size_t s1 = 4096 - (unsigned long)ts%4096;
+    size_t s3 = (unsigned long)(ts+sa/sizeof(HeapWord))%4096;
+    size_t s2 = sa-s1-s3;
+  Copy::conjoint_jbytes(ts,td,s1);
+  ts+=s1/sizeof(HeapWord);
+  td+=s1/sizeof(HeapWord);
+//  Copy::conjoint_jbytes(ts,td,s2);
+/*
+if ((unsigned long)ts % 4096 != 0)
+  assert(0,"align2");
+  if (s2%4096 != 0)
+  {
+printf("%lu %lu %lu %lu\n",s1,s2,s3,sa);
+printf("%p %p %lu\n",src_region_ptr->lob(),src_region_ptr->regionDest()+bufferSize,sa);
+  assert(0,"align3");
+  }
+  */
+  syscall(333,ts,td,s2,1); //cgmin syscall
+//  syscall(335);
+  ts+=s2/sizeof(HeapWord);
+  td+=s2/sizeof(HeapWord);
+  Copy::conjoint_jbytes(ts,td,s3);
+  }
   }
   else
    Copy::conjoint_jbytes((HeapWord*)src_region_ptr->buffer,src_region_ptr->regionDest()/*+h2o*/,src_region_ptr->ws()*sizeof(HeapWord));
@@ -3290,6 +3341,7 @@ sum = 0;
   }
 //printf("space %lu sum %lu\n",_space_info[old_space_id].new_top()-_space_info[old_space_id].dense_prefix(),sum2);
 
+  syscall(335); //pmcf mm tlb flush
 }
 
 void PSParallelCompact::compact() {
@@ -3442,8 +3494,8 @@ for (id = old_space_id; id < last_space_id; ++id) {
       assert(0,"se");
       }
 */
+/*
     HeapWord* nd= dest-region_ptr->objectDest()+region_ptr->regionDest();
-    /*
     if (sd.calc_new_pointer(src) != nd)
     {
     printf("wrong dest new %p src %p nd %p\n",sd.calc_new_pointer(src),src,nd);
