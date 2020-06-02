@@ -3016,7 +3016,7 @@ void PSParallelCompact::enqueue_dense_prefix_tasks(GCTaskQueue* q,
            "The region after the dense prefix should always be ready to fill");
 
     size_t region_index_start = sd.addr_to_region_idx(space->bottom());
-printf("dense region %lu %lu\n",region_index_start,region_index_end_dense_prefix); //cgmin
+//printf("dense region %lu %lu\n",region_index_start,region_index_end_dense_prefix); //cgmin
 
     // Is there dense prefix work?
     size_t total_dense_prefix_regions =
