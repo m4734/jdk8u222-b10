@@ -235,6 +235,37 @@ class UpdateDensePrefixTask : public GCTask {
   virtual void do_it(GCTaskManager* manager, uint which);
 };
 
+
+class PartialCompactTask : public GCTask {
+ private:
+  PSParallelCompact::SpaceId _space_id;
+  size_t _region_index;
+
+ public:
+  char* name() { return (char *)"update-dense_prefix-task"; }
+
+  PartialCompactTask(PSParallelCompact::SpaceId space_id,
+                        size_t region_index);
+
+  virtual void do_it(GCTaskManager* manager, uint which);
+};
+
+
+class UpdateRegionTask : public GCTask {
+ private:
+  PSParallelCompact::SpaceId _space_id;
+  size_t _region_index;
+
+ public:
+  char* name() { return (char *)"update-dense_prefix-task"; }
+
+  UpdateRegionTask(PSParallelCompact::SpaceId space_id,
+                        size_t region_index);
+
+  virtual void do_it(GCTaskManager* manager, uint which);
+};
+
+
 //
 // DrainStacksCompactionTask
 //

@@ -320,6 +320,38 @@ void UpdateDensePrefixTask::do_it(GCTaskManager* manager, uint which) {
                                                          _region_index_end);
 }
 
+PartialCompactTask::PartialCompactTask(
+                                   PSParallelCompact::SpaceId space_id,
+                                   size_t region_index) :
+  _space_id(space_id),
+  _region_index(region_index) {}
+
+void PartialCompactTask::do_it(GCTaskManager* manager, uint which) {
+
+  NOT_PRODUCT(GCTraceTime tm("UpdateDensePrefixTask",
+    PrintGCDetails && TraceParallelOldGCTasks, true, NULL, PSParallelCompact::gc_tracer()->gc_id()));
+
+  ParCompactionManager* cm =
+    ParCompactionManager::gc_thread_compaction_manager(which);
+  PSParallelCompact::partial_compact_task(cm,_space_id,_region_index);
+}
+
+UpdateRegionTask::UpdateRegionTask(
+                                   PSParallelCompact::SpaceId space_id,
+                                   size_t region_index) :
+  _space_id(space_id),
+  _region_index(region_index) {}
+
+void UpdateRegionTask::do_it(GCTaskManager* manager, uint which) {
+
+  NOT_PRODUCT(GCTraceTime tm("UpdateDensePrefixTask",
+    PrintGCDetails && TraceParallelOldGCTasks, true, NULL, PSParallelCompact::gc_tracer()->gc_id()));
+
+  ParCompactionManager* cm =
+    ParCompactionManager::gc_thread_compaction_manager(which);
+  PSParallelCompact::update_region_task(cm,_space_id,_region_index);
+}
+
 void DrainStacksCompactionTask::do_it(GCTaskManager* manager, uint which) {
   assert(Universe::heap()->is_gc_active(), "called outside gc");
 

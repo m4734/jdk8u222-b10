@@ -1047,6 +1047,7 @@ class PSParallelCompact : AllStatic {
   static bool   _dwl_initialized;
 #endif  // #ifdef ASSERT
 
+  static HeapWord* heap2; //cgmin
 
  public:
   static ParallelOldTracer* gc_tracer() { return &_gc_tracer; }
@@ -1178,6 +1179,9 @@ class PSParallelCompact : AllStatic {
   // Add dense prefix update tasks to the task queue.
   static void enqueue_dense_prefix_tasks(GCTaskQueue* q,
                                          uint parallel_gc_threads);
+  static void enqueue_partial_compact_tasks(GCTaskQueue* q, uint parallel_gc_threads); //cgmin task
+  static void enqueue_update_region_tasks(GCTaskQueue* q, uint parallel_gc_threads); //cgmin task
+
 
   // Add region stealing tasks to the task queue.
   static void enqueue_region_stealing_tasks(
@@ -1297,6 +1301,15 @@ class PSParallelCompact : AllStatic {
                                                   size_t region_index_start,
                                                   size_t region_index_end);
 
+  static void partial_compact_task(ParCompactionManager* cm,
+                                                  SpaceId space_id,
+                                                  size_t region_idx);
+
+
+  static void update_region_task(ParCompactionManager* cm,
+                                                  SpaceId space_id,
+                                                  size_t region_idx);
+
   // Return the address of the count + 1st live word in the range [beg, end).
   static HeapWord* skip_live_words(HeapWord* beg, HeapWord* end, size_t count);
 
@@ -1332,6 +1345,8 @@ class PSParallelCompact : AllStatic {
 
   static void partial_fill_region(ParCompactionManager* cm, size_t region); //cgmin
   static void update_region(ParCompactionManager* cm, size_t region); //cgmin
+  static void fill_region2(ParCompactionManager* cm, size_t region); //cgmin
+
 
   // Fill in the block table for the specified region.
   static void fill_blocks(size_t region_idx);
