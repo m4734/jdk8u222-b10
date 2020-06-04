@@ -236,18 +236,6 @@ public:
   class RegionData
   {
   public:
-/*
-    //cgmin RegionData
-    HeapWord* regionDest() const { return _regionDest; }
-    HeapWord* objectDest() const { return _objectDest; }
-    HeapWord* lob() const { return _lob; }
-    void set_regionDest(HeapWord* addr) { _regionDest = addr; }
-    void set_objectDest(HeapWord* addr) { _objectDest = addr; }
-    void set_lob(HeapWord* lob) { _lob = lob; }
-//    size_t ws() const { return _ws; }
-//    void set_ws(size_t ws) { _ws = ws; }
-    unsigned char        buffer[4096]; //cgmin 4k buffer
-*/
 
     // Destination address of the region.
     HeapWord* destination() const { return _destination; }
@@ -355,13 +343,6 @@ public:
     static const region_sz_t dc_claimed;         // Region has been claimed.
     static const region_sz_t dc_completed;       // Region has been completed.
     static const region_sz_t los_mask;           // Mask for live obj size.
-/*
-    //cgmin region data
-    HeapWord*            _regionDest;
-    HeapWord*            _objectDest;
-//    size_t               _ws;
-    HeapWord*            _lob;
-*/
 
     HeapWord*            _destination;
     size_t               _source_region;
@@ -394,6 +375,8 @@ public:
     void set_lob(HeapWord* lob) { _lob = lob; }
     size_t ws() const { return _ws; }
     void set_ws(size_t ws) { _ws = ws; }
+    size_t splitOffset() const { return _splitOffset; }
+    void set_splitOffset(size_t splitOffset) { _splitOffset = splitOffset; }
     unsigned char        buffer[4096]; //cgmin 4k buffer
 
 //cgmin region data
@@ -401,7 +384,7 @@ public:
     HeapWord*            _objectDest;
     size_t               _ws;
     HeapWord*            _lob;
-
+    size_t           _splitOffset;
 
   };
 

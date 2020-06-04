@@ -722,6 +722,7 @@ bool ParallelCompactData::summarize(SplitInfo& split_info,
     _region_data[cur_region].set_objectDest(target_dest);
     _region_data[cur_region].set_regionDest(top_live);
     _region_data[cur_region].set_lob(live_obj_beg);
+    _region_data[cur_region].set_splitOffset(0);
 //    printf("summary idx %lu rb %p re %p lob %p\n",cur_region,region_beg,region_end,live_obj_beg);
 /*
 unsigned int id;
@@ -2265,7 +2266,7 @@ else
     compaction_start.update();
 //    compact();
     temp_compact();
-    update_object(); //cgmin
+//    update_object(); //cgmin
 }
     // need flush cgmin
 
@@ -3252,6 +3253,8 @@ void PSParallelCompact::temp_compact()
     printf("???3 br %lu rd %p od %p ws %lu deffered %p\n",beg_region,region_ptr->regionDest(),region_ptr->objectDest(),region_ptr->ws(),region_ptr->deferred_obj_addr());
     }
     */
+    ParCompactionManager* cm = ParCompactionManager::manager_array(0);
+
   for (cur_region = beg_region; cur_region < old_top_region; ++cur_region) {
 //printf("tc %lu\n",cur_region);
     RegionData* src_region_ptr = sd.region(cur_region);
@@ -3281,7 +3284,7 @@ void PSParallelCompact::temp_compact()
   {
    Copy::conjoint_jbytes((HeapWord*)src_region_ptr->buffer,src_region_ptr->regionDest()/*+h2o*/,bufferSize*sizeof(HeapWord));
     size_t sa = (src_region_ptr->ws()-bufferSize)*sizeof(HeapWord);
-   if (sa < 4096*5 || true) //cgmin syscall
+   if (sa < 4096*5) //cgmin syscall
    {
   Copy::conjoint_jbytes(src_region_ptr->lob()/*+h2o*/,src_region_ptr->regionDest()+bufferSize/*+h2o*/,(src_region_ptr->ws()-bufferSize)*sizeof(HeapWord));
   }
@@ -3311,7 +3314,7 @@ printf("%p %p %lu\n",src_region_ptr->lob(),src_region_ptr->regionDest()+bufferSi
   }
   */
   syscall(333,ts,td,s2,1); //cgmin syscall
-//  syscall(335);
+//  syscall(335); //cgmin mm flush
   ts+=s2/sizeof(HeapWord);
   td+=s2/sizeof(HeapWord);
   Copy::conjoint_jbytes(ts,td,s3);
@@ -3319,6 +3322,14 @@ printf("%p %p %lu\n",src_region_ptr->lob(),src_region_ptr->regionDest()+bufferSi
   }
   else
    Copy::conjoint_jbytes((HeapWord*)src_region_ptr->buffer,src_region_ptr->regionDest()/*+h2o*/,src_region_ptr->ws()*sizeof(HeapWord));
+   /*
+   if (src_region_ptr->splitOffset() != 0)
+   {
+//   printf("ppp %p %p %p\n",src_region_ptr->regionDest(),src_region_ptr->splitAddr(),src_region_ptr->objectDest());
+//    oop(src_region_ptr->regionDest()+(src_region_ptr->splitAddr()-src_region_ptr->objectDest()))->update_contents(cm);
+      oop(src_region_ptr->regionDest()+src_region_ptr->splitOffset())->update_contents(cm);
+    }
+    */
 /*
   addr = src_region_ptr->regionDest();
   if (addr != end_addr)
@@ -3498,6 +3509,11 @@ for (id = old_space_id; id < last_space_id; ++id) {
   HeapWord* buffer = (HeapWord*)region_ptr->buffer;
   idx_t cur_beg = bitmap->addr_to_bit(first_addr);
 //  printf("idx %lu rb %p re %p rd %p od %p lob %p ws %lu bs %lu\n",region_idx,region_beg,region_end,region_ptr->regionDest(),region_ptr->objectDest(),region_ptr->lob(),region_ptr->ws(),region_ptr->lob()-region_ptr->objectDest());
+
+  HeapWord* regionDest = region_ptr->regionDest();
+  SpaceId dest_space_id = space_id(regionDest);
+  ObjectStartArray* start_array = _space_info[dest_space_id].start_array();
+
   while (cur_beg < range_end) {
     cur_end = bitmap->find_obj_end(cur_beg,search_end);
     size = bitmap->obj_size(cur_beg,cur_end);
@@ -3519,7 +3535,7 @@ for (id = old_space_id; id < last_space_id; ++id) {
     assert(0,"ccc");
     }
     */
-//    oop(src)->update_contents(cm);
+    oop(src)->update_contents(cm);
 
 /*
     if (first_addr - region_ptr->objectDest() >= 512)
@@ -3538,12 +3554,14 @@ for (id = old_space_id; id < last_space_id; ++id) {
 //        size-=remain_size;
 //        Copy::aligned_conjoint_words(src,dest,size);
         Copy::conjoint_jbytes(src+remain_size,first_addr/*+h2o*/,(size-remain_size)*sizeof(HeapWord));
+//        region_ptr->set_splitOffset(buffer-(HeapWord*)region_ptr->buffer);
 //        dest+=size;
       }
       else
       {
 //         Copy::aligned_conjoint_words(src,(HeapWord*)buffer,size);
          Copy::conjoint_jbytes(src,(HeapWord*)buffer,size*sizeof(HeapWord));
+//         oop(buffer)->update_contents(cm);
          buffer+=size;
       }
     }
@@ -3551,9 +3569,14 @@ for (id = old_space_id; id < last_space_id; ++id) {
     {
 //      Copy::aligned_conjoint_words(src,dest,size);
         Copy::conjoint_jbytes(src,dest/*+h2o*/,size*sizeof(HeapWord));
+//        oop(dest)->update_contents(cm);
 //      dest+=size;
     }
-
+    if (start_array != NULL)
+    {
+    start_array->allocate_block(regionDest);
+    regionDest+=size;
+    }
     dest+=size;
 //    if (cur_end >= search_end)
 //      break;
