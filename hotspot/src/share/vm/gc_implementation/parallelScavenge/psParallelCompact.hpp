@@ -1024,6 +1024,8 @@ class PSParallelCompact : AllStatic {
   static void pre_compact(PreGCValues* pre_gc_values);
   static void post_compact();
 
+  static void scan(); //cgmin
+
   // Mark live objects
   static void marking_phase(ParCompactionManager* cm,
                             bool maximum_heap_compaction,

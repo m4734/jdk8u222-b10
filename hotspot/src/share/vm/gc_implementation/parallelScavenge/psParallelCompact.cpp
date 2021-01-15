@@ -2088,8 +2088,10 @@ bool PSParallelCompact::invoke_no_policy(bool maximum_heap_compaction) {
     // needed by the compaction for filling holes in the dense prefix.
     adjust_roots();
 
+	scan(); //cgmin
+
     compaction_start.update();
-    compact();
+    compact(); //cgmin compact
 
     // Reset the mark bitmap, summary data, and do other bookkeeping.  Must be
     // done before resizing.
@@ -2681,6 +2683,36 @@ void PSParallelCompact::write_block_fill_histogram(outputStream* const out)
 }
 #endif // #ifdef ASSERT
 
+void PSParallelCompact::scan() {
+
+	HeapWord* addr;
+	HeapWord* start;
+	HeapWord* end;
+
+//	ParallelCompactData& sd = summary_data();
+
+	printf("cgmin full gc scan\n");
+
+	for (unsigned int i = 0; i < last_space_id; ++i) {
+
+	MutableSpace* space = _space_info[i].space();
+
+	start = space->bottom();
+	end = space->top();
+
+	addr = start;
+
+	while (addr < end)
+	{
+		if (oop(addr)->is_gc_marked() == false && oop(addr)->has_bias_pattern() == false)
+			printf("unmarked %p\n",addr);
+		addr+=oop(addr)->size();
+	}
+	}
+
+	printf("cgmin full gc scan e\n");
+}
+
 void PSParallelCompact::compact() {
   // trace("5");
   GCTraceTime tm("compaction phase", print_phases(), true, &_gc_timer, _gc_tracer.gc_id());
@@ -3076,7 +3108,7 @@ size_t PSParallelCompact::next_src_region(MoveAndUpdateClosure& closure,
   return 0;
 }
 
-void PSParallelCompact::fill_region(ParCompactionManager* cm, size_t region_idx)
+void PSParallelCompact::fill_region(ParCompactionManager* cm, size_t region_idx) //cgmin fill region
 {
   typedef ParMarkBitMap::IterationStatus IterationStatus;
   const size_t RegionSize = ParallelCompactData::RegionSize;

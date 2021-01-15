@@ -255,6 +255,7 @@ bool PSScavenge::invoke() {
   return full_gc_done;
 }
 
+
 // This method contains no policy. You should probably
 // be calling invoke() instead.
 bool PSScavenge::invoke_no_policy() {
@@ -486,6 +487,43 @@ bool PSScavenge::invoke_no_policy() {
     // failure cleanup time as part of the collection (otherwise, we're
     // implicitly saying it's mutator time).
     size_policy->minor_collection_end(gc_cause);
+
+	//cgmin minor gc end
+
+printf("cgmin minor gc scan\n");
+
+	MutableSpace* space;
+	HeapWord* start;
+	HeapWord* end;
+	HeapWord* addr;
+
+	space = young_gen->eden_space();
+
+	start = space->bottom();
+	end = space->top();
+	addr = start;
+
+	while (addr < end)
+	{
+		if (oop(addr)->is_gc_marked() == false && oop(addr)->has_bias_pattern() == false)
+			printf("unmarked %p\n",addr);
+		addr+=oop(addr)->size();
+	}
+
+	space = young_gen->from_space();
+
+	start = space->bottom();
+	end = space->top();
+	addr = start;
+
+	while (addr < end)
+	{
+		if (oop(addr)->is_gc_marked() == false && oop(addr)->has_bias_pattern() == false)
+			printf("unmarked %p\n",addr);
+		addr+=oop(addr)->size();
+	}
+
+printf("cgmin minor gc scan e\n");
 
     if (!promotion_failure_occurred) {
       // Swap the survivor spaces.

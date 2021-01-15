@@ -55,6 +55,9 @@ void CollectedHeap::post_allocation_setup_no_klass_install(KlassHandle klass,
     // May be bootstrapping
     obj->set_mark(markOopDesc::prototype());
   }
+//  printf("header %x %x %x %x\n",*(obj),*(obj+1),*(obj+2),*(obj+3));//cgmin print header
+  printf("header %08x\n",*((unsigned int*)(obj)));//cgmin print header
+
 }
 
 void CollectedHeap::post_allocation_install_obj_klass(KlassHandle klass,
@@ -131,6 +134,9 @@ if (size >= 512) //cgmin check
     if (result != NULL) {
       assert(!HAS_PENDING_EXCEPTION,
              "Unexpected exception, will result in uninitialized storage");
+
+      printf("in alloc %p %p\n",result,klass()); //cgmin print alloc
+
       return result;
     }
   }
@@ -145,6 +151,8 @@ if (size >= 512) //cgmin check
     THREAD->incr_allocated_bytes(size * HeapWordSize);
 
     AllocTracer::send_allocation_outside_tlab_event(klass, size * HeapWordSize);
+
+      printf("out alloc %p %p\n",result,klass()); //cgmin print alloc
 
     return result;
   }
