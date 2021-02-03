@@ -242,6 +242,7 @@ class HandleArea: public Arena {
     oop* handle = (oop*) Amalloc_4(oopSize);
 #endif
     *handle = obj;
+//    printf("real allocate handle %p hwm %p max %p\n",(oop*)handle,(char*)_hwm,(char*)_max);
     return handle;
   }
  public:

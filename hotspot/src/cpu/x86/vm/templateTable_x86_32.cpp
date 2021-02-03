@@ -3267,6 +3267,7 @@ void TemplateTable::invokedynamic(int byte_no) {
 // Allocation
 
 void TemplateTable::_new() {
+	printf("tt new\n"); //cgmin print
   transition(vtos, atos);
   __ get_unsigned_2_byte_index_at_bcp(rdx, 1);
   Label slow_case;
@@ -3401,11 +3402,14 @@ void TemplateTable::_new() {
     } else {
       __ movptr(Address(rax, oopDesc::mark_offset_in_bytes ()),
                 (int32_t)markOopDesc::prototype()); // header
+      __ orptr (Address(rax, oopDesc::mark_offset_in_bytes ()),
+		      (int)(1<<9)); //cgmin header dummy asm
       __ pop(rcx);   // get saved klass back in the register.
     }
     __ store_klass(rax, rcx);  // klass
 
     {
+
       SkipIfEqual skip_if(_masm, &DTraceAllocProbes, 0);
       // Trigger dtrace event for fastpath
       __ push(atos);

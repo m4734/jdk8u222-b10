@@ -352,18 +352,6 @@ public:
   CompactibleSpace() :
    _compaction_top(NULL), _next_compaction_space(NULL) {}
 
-int _copy_sum1,_copy_sum2,_time_sum1,_time_sum2; //cgmin check
-//int word,word_sum,cc,cnt;
-//HeapWord *old_s,*old_d;
-void print()
-{
-
-printf("full\nsize %d time %d\nsize %d time %d\nsize %d time %d\n",_copy_sum1,_time_sum1,_copy_sum2,_time_sum2,_copy_sum1+_copy_sum2,_time_sum1+_time_sum2); //cgmin check
-
-_copy_sum1=_copy_sum2=_time_sum1=_time_sum2=0; //cgmin check;
-
-}
-
   virtual void initialize(MemRegion mr, bool clear_space, bool mangle_space);
   virtual void clear(bool mangle_space);
 

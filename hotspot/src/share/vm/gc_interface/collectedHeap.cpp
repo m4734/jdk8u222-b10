@@ -285,7 +285,7 @@ HeapWord* CollectedHeap::allocate_from_tlab_slow(KlassHandle klass, Thread* thre
   if (obj == NULL) {
     return NULL;
   }
-
+printf("new tlab %p size %lu\n",obj,new_tlab_size);
   AllocTracer::send_allocation_in_new_tlab_event(klass, new_tlab_size * HeapWordSize, size * HeapWordSize);
 
   if (ZeroTLAB) {

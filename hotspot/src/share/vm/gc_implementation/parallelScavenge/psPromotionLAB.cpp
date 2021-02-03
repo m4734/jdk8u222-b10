@@ -82,12 +82,15 @@ void PSPromotionLAB::flush() {
   // so they can always fill with an array.
   HeapWord* tlab_end = end() + filler_header_size;
   typeArrayOop filler_oop = (typeArrayOop) top();
+  printf("filler_oop %p\n",(HeapWord*)filler_oop); //cgmin filler
   filler_oop->set_mark(markOopDesc::prototype());
   filler_oop->set_klass(Universe::intArrayKlassObj());
   const size_t array_length =
     pointer_delta(tlab_end, top()) - typeArrayOopDesc::header_size(T_INT);
   assert( (array_length * (HeapWordSize/sizeof(jint))) < (size_t)max_jint, "array too big in PSPromotionLAB");
   filler_oop->set_length((int)(array_length * (HeapWordSize/sizeof(jint))));
+
+*(unsigned long*)((void*)filler_oop) |= (1<<9); //cgmin header dummy
 
 #ifdef ASSERT
   // Note that we actually DO NOT want to use the aligned header size!

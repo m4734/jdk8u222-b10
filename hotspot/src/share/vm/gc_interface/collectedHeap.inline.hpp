@@ -56,7 +56,14 @@ void CollectedHeap::post_allocation_setup_no_klass_install(KlassHandle klass,
     obj->set_mark(markOopDesc::prototype());
   }
 //  printf("header %x %x %x %x\n",*(obj),*(obj+1),*(obj+2),*(obj+3));//cgmin print header
-  printf("header %08x\n",*((unsigned int*)(obj)));//cgmin print header
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC,&ts);
+  unsigned long ttt;
+  ttt = ts.tv_sec%1000*1000+ts.tv_nsec/1000000;
+  *(unsigned long*)((void*)obj) |= (ttt << 11); // header time
+  *(unsigned long*)((void*)obj) |= (1 << 10); // cgmin header time
+//  printf("%lu %lu\n",ts.tv_sec,ts.tv_nsec);
+  printf("install %p header %x ttt %lu\n",(HeapWord*)obj,(unsigned int)*((intptr_t*)(obj)),ttt);//cgmin print header
 
 }
 
@@ -79,7 +86,7 @@ inline void post_allocation_notify(KlassHandle klass, oop obj, int size) {
 
   // support for JVMTI VMObjectAlloc event (no-op if not enabled)
   JvmtiExport::vm_object_alloc_event_collector(obj);
-
+printf("post alloc obj %p\n",(HeapWord*)obj); //cgmin print
   if (DTraceAllocProbes) {
     // support for Dtrace object alloc event (no-op most of the time)
     if (klass() != NULL && klass()->name() != NULL) {
@@ -125,20 +132,18 @@ HeapWord* CollectedHeap::common_mem_allocate_noinit(KlassHandle klass, size_t si
   }
 
   HeapWord* result = NULL;
-/*
-if (size >= 512) //cgmin check
-	printf("s %d\n",size);
-*/
+
   if (UseTLAB) {
     result = allocate_from_tlab(klass, THREAD, size);
     if (result != NULL) {
       assert(!HAS_PENDING_EXCEPTION,
              "Unexpected exception, will result in uninitialized storage");
 
-      printf("in alloc %p %p\n",result,klass()); //cgmin print alloc
+      printf("in alloc %p klass %p size %lu\n",result,klass(),size * HeapWordSize); //cgmin print alloc
 
       return result;
     }
+    printf ("tlab fail\n");
   }
   bool gc_overhead_limit_was_exceeded = false;
   result = Universe::heap()->mem_allocate(size,
@@ -152,10 +157,11 @@ if (size >= 512) //cgmin check
 
     AllocTracer::send_allocation_outside_tlab_event(klass, size * HeapWordSize);
 
-      printf("out alloc %p %p\n",result,klass()); //cgmin print alloc
+      printf("out alloc %p klass %p size %lu\n",result,klass(),size * HeapWordSize); //cgmin print alloc
 
     return result;
   }
+  printf("out fail\n");
 
 
   if (!gc_overhead_limit_was_exceeded) {
@@ -191,7 +197,6 @@ HeapWord* CollectedHeap::common_mem_allocate_init(KlassHandle klass, size_t size
 
 HeapWord* CollectedHeap::allocate_from_tlab(KlassHandle klass, Thread* thread, size_t size) {
   assert(UseTLAB, "should use UseTLAB");
-
   HeapWord* obj = thread->tlab().allocate(size);
   if (obj != NULL) {
     return obj;
@@ -209,6 +214,7 @@ void CollectedHeap::init_obj(HeapWord* obj, size_t size) {
 }
 
 oop CollectedHeap::obj_allocate(KlassHandle klass, int size, TRAPS) {
+	printf("collected heap obj_alloc\n"); //cgmin print
   debug_only(check_for_valid_allocation_state());
   assert(!Universe::heap()->is_gc_active(), "Allocation during gc not allowed");
   assert(size >= 0, "int won't convert to size_t");

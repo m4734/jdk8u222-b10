@@ -2685,6 +2685,11 @@ void PSParallelCompact::write_block_fill_histogram(outputStream* const out)
 
 void PSParallelCompact::scan() {
 
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC,&ts);
+	unsigned long ttt,ttt3;
+	unsigned long ttt2;
+	ttt = ts.tv_sec%1000*1000+ts.tv_nsec/1000000; //ms
 	HeapWord* addr;
 	HeapWord* start;
 	HeapWord* end;
@@ -2704,8 +2709,24 @@ void PSParallelCompact::scan() {
 
 	while (addr < end)
 	{
-		if (oop(addr)->is_gc_marked() == false && oop(addr)->has_bias_pattern() == false)
-			printf("unmarked %p\n",addr);
+		if (oop(addr)->is_gc_marked() == false && oop(addr)->has_bias_pattern() == false && oop(addr)->is_unlocked())
+		{
+
+//			printf("unmarked %p\n",addr);
+
+//			  printf("unmarked %p header %08x\n",addr,*((unsigned int*)(addr)));//cgmin print header
+//			ttt2 = *(unsigned long*)(addr) >> 16;
+//			ttt3 = (ttt+100000-ttt2)%100000;
+			if (*((unsigned long*)(addr)) & (1 << 10))
+			{
+			ttt3 = 	ttt - (*(unsigned long*)(addr) >> 11);
+			  printf("unmarked %p header %p klass %p ms %lu\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass(),ttt3);//cgmin print header
+			}
+			else if ((*((unsigned long*)(addr)) & (1 << 9)) == 0)
+			  printf("OOC unmarked %p header %p klass %p\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass());//cgmin print header
+
+
+		}
 		addr+=oop(addr)->size();
 	}
 	}

@@ -1389,6 +1389,7 @@ void LIR_List::cmp_reg_mem(LIR_Condition condition, LIR_Opr reg, LIR_Address* ad
 
 void LIR_List::allocate_object(LIR_Opr dst, LIR_Opr t1, LIR_Opr t2, LIR_Opr t3, LIR_Opr t4,
                                int header_size, int object_size, LIR_Opr klass, bool init_check, CodeStub* stub) {
+	printf("lir list alloc\n");//cgmin print
   append(new LIR_OpAllocObj(
                            klass,
                            dst,

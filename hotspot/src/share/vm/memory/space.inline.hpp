@@ -281,34 +281,7 @@ inline HeapWord* Space::block_start(const void* p) {
       /* copy object and reinit its mark */                                     \
       assert(q != compaction_top, "everything in this pass should be moving");  \
 \
-struct timespec ts1,ts2; /*cgmin check*/ \
-clock_gettime(CLOCK_MONOTONIC, &ts1); \
       Copy::aligned_conjoint_words(q, compaction_top, size);                    \
-clock_gettime(CLOCK_MONOTONIC, &ts2); \
-if (size >= 512) \
-{\
-_copy_sum1+=size;\
-_time_sum1+=(ts2.tv_sec-ts1.tv_sec)*1000000000+ts2.tv_nsec-ts1.tv_nsec; \
-}\
-else\
-{\
-_copy_sum2+=size;\
-_time_sum2+=(ts2.tv_sec-ts1.tv_sec)*1000000000+ts2.tv_nsec-ts1.tv_nsec; \
-}\
-/*printf("%lx %lx %lx %lx %lx %lx %lx\n",&cnt,q,compaction_top,q+size,compaction_top+size,old_s,old_d);*/ \
-/*if (old_s == q && old_d == compaction_top){*/\
-/*word+=size;}*/\
-/*else{*/\
-/*if (word >= 512)*/ \
-/*word_sum+=word;*/\
-/*printf("%d ",word);*/\
-/*word = size;*/\
-/*++cc;}*/\
-\
-/*++cnt;*/\
-/*old_s = q+size; */\
-/*old_d = compaction_top+size; */\
-\
       oop(compaction_top)->init_mark();                                         \
       assert(oop(compaction_top)->klass() != NULL, "should have a class");      \
                                                                                 \

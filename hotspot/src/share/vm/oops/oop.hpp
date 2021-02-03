@@ -72,7 +72,7 @@ class oopDesc {
   markOop  mark() const         { return _mark; }
   markOop* mark_addr() const    { return (markOop*) &_mark; }
 
-  void set_mark(volatile markOop m)      { _mark = m;   }
+  void set_mark(volatile markOop m)      { printf("mark %p\n",&_mark); _mark = m;   }
 
   void    release_set_mark(markOop m);
   markOop cas_set_mark(markOop new_mark, markOop old_mark);
@@ -371,7 +371,7 @@ class oopDesc {
   void     set_displaced_mark(markOop m);
 
   // for code generation
-  static int mark_offset_in_bytes()    { return offset_of(oopDesc, _mark); }
+  static int mark_offset_in_bytes()    {printf("fcg\n"); return offset_of(oopDesc, _mark); }
   static int klass_offset_in_bytes()   { return offset_of(oopDesc, _metadata._klass); }
   static int klass_gap_offset_in_bytes();
 };

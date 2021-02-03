@@ -310,7 +310,7 @@ const char* Runtime1::name_for_address(address entry) {
 
 JRT_ENTRY(void, Runtime1::new_instance(JavaThread* thread, Klass* klass))
   NOT_PRODUCT(_new_instance_slowcase_cnt++;)
-
+printf("runtime1 new instace\n");//cgmin print
   assert(klass->is_klass(), "not a class");
   Handle holder(THREAD, klass->klass_holder()); // keep the klass alive
   instanceKlassHandle h(thread, klass);

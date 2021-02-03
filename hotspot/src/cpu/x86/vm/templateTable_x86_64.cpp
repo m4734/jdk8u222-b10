@@ -3319,6 +3319,7 @@ void TemplateTable::invokedynamic(int byte_no) {
 // Allocation
 
 void TemplateTable::_new() {
+	printf("tt new 64\n"); //cgmin print
   transition(vtos, atos);
   __ get_unsigned_2_byte_index_at_bcp(rdx, 1);
   Label slow_case;
@@ -3448,12 +3449,16 @@ void TemplateTable::_new() {
     } else {
       __ movptr(Address(rax, oopDesc::mark_offset_in_bytes()),
                (intptr_t) markOopDesc::prototype()); // header (address 0x1)
+      __ orptr(Address(rax, oopDesc::mark_offset_in_bytes()),
+		      (int)(1<<9)); //cgmin header dummy asm
     }
     __ xorl(rcx, rcx); // use zero reg to clear memory (shorter code)
     __ store_klass_gap(rax, rcx);  // zero klass gap for compressed oops
     __ store_klass(rax, rsi);      // store klass last
 
     {
+
+      printf("dta2\n");//cgmin print
       SkipIfEqual skip(_masm, &DTraceAllocProbes, false);
       // Trigger dtrace event for fastpath
       __ push(atos); // save the return value

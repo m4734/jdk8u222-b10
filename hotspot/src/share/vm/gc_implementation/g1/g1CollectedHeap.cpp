@@ -4155,14 +4155,8 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
         // Initialize the GC alloc regions.
         _allocator->init_gc_alloc_regions(evacuation_info);
 
-struct timespec ts1,ts2; //cgmin check
-clock_gettime(CLOCK_MONOTONIC,&ts1);
-
         // Actually do the work...
         evacuate_collection_set(evacuation_info);
-
-clock_gettime(CLOCK_MONOTONIC,&ts2);
-printf("par  %lu\n",(ts2.tv_sec-ts1.tv_sec)*1000000000+ts2.tv_nsec-ts1.tv_nsec); //cgmin check
 
         free_collection_set(g1_policy()->collection_set(), evacuation_info);
 

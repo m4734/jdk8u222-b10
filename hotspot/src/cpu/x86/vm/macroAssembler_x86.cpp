@@ -1065,6 +1065,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
                                          Label& done,
                                          Label* slow_case,
                                          BiasedLockingCounters* counters) {
+	printf("asm biased locking enter\n"); //cgmin print
   assert(UseBiasedLocking, "why call this otherwise?");
   assert(swap_reg == rax, "swap_reg must be rax for cmpxchgq");
   LP64_ONLY( assert(tmp_reg != noreg, "tmp_reg must be supplied"); )
@@ -1286,6 +1287,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
 }
 
 void MacroAssembler::biased_locking_exit(Register obj_reg, Register temp_reg, Label& done) {
+	printf("asm biased lockking exit\n");//cgmin print
   assert(UseBiasedLocking, "why call this otherwise?");
 
   // Check for biased locking unlock case, which is a no-op
@@ -2960,6 +2962,7 @@ void MacroAssembler::eden_allocate(Register obj,
                                    int con_size_in_bytes,
                                    Register t1,
                                    Label& slow_case) {
+	printf("eden alloc\n");//cgmin print
   assert(obj == rax, "obj must be in rax, for cmpxchg");
   assert_different_registers(obj, var_size_in_bytes, t1);
   if (CMSIncrementalMode || !Universe::heap()->supports_inline_contig_alloc()) {
@@ -4449,6 +4452,7 @@ void MacroAssembler::tlab_allocate(Register obj,
                                    Register t1,
                                    Register t2,
                                    Label& slow_case) {
+//	printf("asm tlab alloc\n");
   assert_different_registers(obj, t1, t2);
   assert_different_registers(obj, var_size_in_bytes, t1);
   Register end = t2;
@@ -4481,6 +4485,7 @@ void MacroAssembler::tlab_allocate(Register obj,
 Register MacroAssembler::tlab_refill(Label& retry,
                                      Label& try_eden,
                                      Label& slow_case) {
+//	printf("tlab refill\n");
   Register top = rax;
   Register t1  = rcx;
   Register t2  = rsi;
@@ -4529,9 +4534,15 @@ Register MacroAssembler::tlab_refill(Label& retry,
   // fill [top, end + alignment_reserve) with array object
   testptr(top, top);
   jcc(Assembler::zero, do_refill);
-
   // set up the mark word
   movptr(Address(top, oopDesc::mark_offset_in_bytes()), (intptr_t)markOopDesc::prototype()->copy_set_hash(0x2));
+
+
+//cgmin check
+//unsigned long ttt;
+//ttt = 1 << 15;
+orptr(Address(top,oopDesc::mark_offset_in_bytes()),(int)(1<<9)); //cgmin header dummy
+
   // set the length to the remaining space
   subptr(t1, typeArrayOopDesc::header_size(T_INT));
   addptr(t1, (int32_t)ThreadLocalAllocBuffer::alignment_reserve());
@@ -5336,6 +5347,7 @@ void MacroAssembler::verify_oop_addr(Address addr, const char* s) {
 }
 
 void MacroAssembler::verify_tlab() {
+	printf("verify tlab\n");//cgmin print
 #ifdef ASSERT
   if (UseTLAB && VerifyOops) {
     Label next, ok;

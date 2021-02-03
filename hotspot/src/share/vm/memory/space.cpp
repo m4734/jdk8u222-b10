@@ -287,9 +287,6 @@ void Space::clear(bool mangle_space) {
 ContiguousSpace::ContiguousSpace(): CompactibleSpace(), _top(NULL),
     _concurrent_iteration_safe_limit(NULL) {
   _mangler = new GenSpaceMangler(this);
-_copy_sum1=_copy_sum2=_time_sum1=_time_sum2=0; //cgmin check;
-//word=word_sum=cc=cnt=0;
-//old_s = old_d = NULL;
 }
 
 ContiguousSpace::~ContiguousSpace() {
@@ -746,15 +743,18 @@ HeapWord* ContiguousSpace::allocate_aligned(size_t size) {
 
 // Requires locking.
 HeapWord* ContiguousSpace::allocate(size_t size) {
+	printf("con alloc\n");
   return allocate_impl(size, end());
 }
 
 // Lock-free.
 HeapWord* ContiguousSpace::par_allocate(size_t size) {
+	printf("con par alloc\n");
   return par_allocate_impl(size, end());
 }
 
 void ContiguousSpace::allocate_temporary_filler(int factor) {
+	printf("con fill\n");
   // allocate temporary type array decreasing free size with factor 'factor'
   assert(factor >= 0, "just checking");
   size_t size = pointer_delta(end(), top());

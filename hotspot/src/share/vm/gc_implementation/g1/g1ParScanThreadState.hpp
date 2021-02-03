@@ -70,13 +70,6 @@ class G1ParScanThreadState : public StackObj {
   double _start_term;
   double _term_time;
 
-int _copy_sum1,_copy_sum2,_time_sum1,_time_sum2; //cgmin check
-/*
-HeapWord* old2;
-HeapWord* obj_ptr2;
-
-int word,word_sum,cnt,cc;
-*/
   // Map from young-age-index (0 == not young, 1 is youngest) to
   // surviving words. base is what we get back from the malloc call
   size_t* _surviving_young_words_base;

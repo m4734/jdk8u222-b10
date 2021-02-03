@@ -118,6 +118,7 @@ void ThreadLocalAllocBuffer::make_parsable(bool retire) {
       myThread()->incr_allocated_bytes(used_bytes());
     }
 
+	printf("dummy %p\n",top());
     CollectedHeap::fill_with_object(top(), hard_end(), retire);
 
     if (retire || ZeroTLAB) {  // "Reset" the TLAB
@@ -191,6 +192,7 @@ void ThreadLocalAllocBuffer::initialize(HeapWord* start,
   set_pf_top(top);
   set_end(end);
   invariants();
+  printf("tlab init start %p top %p end %p\n",start,top,end);
 }
 
 void ThreadLocalAllocBuffer::initialize() {

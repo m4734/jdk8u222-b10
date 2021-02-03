@@ -36,6 +36,7 @@
 #include "runtime/stubRoutines.hpp"
 
 int C1_MacroAssembler::lock_object(Register hdr, Register obj, Register disp_hdr, Register scratch, Label& slow_case) {
+	printf("asm lock object\n");//cgmin print
   const int aligned_mask = BytesPerWord -1;
   const int hdr_offset = oopDesc::mark_offset_in_bytes();
   assert(hdr == rax, "hdr must be rax, for the cmpxchg instruction");
@@ -99,6 +100,7 @@ int C1_MacroAssembler::lock_object(Register hdr, Register obj, Register disp_hdr
 
 
 void C1_MacroAssembler::unlock_object(Register hdr, Register obj, Register disp_hdr, Label& slow_case) {
+//	printf("asm unlock object\n");//cgmin print
   const int aligned_mask = BytesPerWord -1;
   const int hdr_offset = oopDesc::mark_offset_in_bytes();
   assert(disp_hdr == rax, "disp_hdr must be rax, for the cmpxchg instruction");
@@ -132,6 +134,8 @@ void C1_MacroAssembler::unlock_object(Register hdr, Register obj, Register disp_
   jcc(Assembler::notEqual, slow_case);
   // done
   bind(done);
+
+//	orptr(Address(obj,oopDesc::mark_offset_in_bytes()),(int)(1<<9)); //cgmin header dummy
 }
 
 
@@ -148,6 +152,7 @@ void C1_MacroAssembler::try_allocate(Register obj, Register var_size_in_bytes, i
 
 void C1_MacroAssembler::initialize_header(Register obj, Register klass, Register len, Register t1, Register t2) {
   assert_different_registers(obj, klass, len);
+
   if (UseBiasedLocking && !len->is_valid()) {
     assert_different_registers(obj, klass, len, t1, t2);
     movptr(t1, Address(klass, Klass::prototype_header_offset()));
@@ -156,6 +161,21 @@ void C1_MacroAssembler::initialize_header(Register obj, Register klass, Register
     // This assumes that all prototype bits fit in an int32_t
     movptr(Address(obj, oopDesc::mark_offset_in_bytes ()), (int32_t)(intptr_t)markOopDesc::prototype());
   }
+/*
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC,&ts);
+  unsigned long ttt;
+  ttt = ts.tv_sec%100*1000+ts.tv_nsec/1000000;
+*/
+//  *(unsigned long*)(obj) |= (ttt << 16); // header time
+//  *(unsigned long*)(obj) |= (1 << 15); // header time
+//  printf("%lu %lu\n",ts.tv_sec,ts.tv_nsec);
+//  ttt = (ttt << 16) | (1 << 10); //cgmin header
+//	orptr(Address(obj,oopDesc::mark_offset_in_bytes()), (int)ttt); //cgmin header
+//  printf("asm init header %x\n",ttt);//cgmin print header
+
+  orptr(Address(obj,oopDesc::mark_offset_in_bytes()), (int)(1 << 9)); //cgmin header asm summy
+
 #ifdef _LP64
   if (UseCompressedClassPointers) { // Take care not to kill klass
     movptr(t1, klass);
@@ -234,6 +254,7 @@ void C1_MacroAssembler::initialize_body(Register obj, Register len_in_bytes, int
 
 
 void C1_MacroAssembler::allocate_object(Register obj, Register t1, Register t2, int header_size, int object_size, Register klass, Label& slow_case) {
+	printf("c1 alloc obj\n"); //cgmin print
   assert(obj == rax, "obj must be in rax, for cmpxchg");
   assert_different_registers(obj, t1, t2); // XXX really?
   assert(header_size >= 0 && object_size >= header_size, "illegal sizes");
@@ -283,7 +304,7 @@ void C1_MacroAssembler::initialize_object(Register obj, Register klass, Register
       jcc(Assembler::notZero, loop);
     }
   }
-
+//printf("runtime1 doa\n"); //cgmin print
   if (CURRENT_ENV->dtrace_alloc_probes()) {
     assert(obj == rax, "must be");
     call(RuntimeAddress(Runtime1::entry_for(Runtime1::dtrace_object_alloc_id)));
@@ -317,6 +338,7 @@ void C1_MacroAssembler::allocate_array(Register obj, Register len, Register t1, 
   const Register len_zero = len;
   initialize_body(obj, arr_size, header_size * BytesPerWord, len_zero);
 
+//  printf("runtime1 doa array\n"); //cgmin print
   if (CURRENT_ENV->dtrace_alloc_probes()) {
     assert(obj == rax, "must be");
     call(RuntimeAddress(Runtime1::entry_for(Runtime1::dtrace_object_alloc_id)));

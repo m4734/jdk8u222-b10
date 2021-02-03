@@ -727,7 +727,6 @@ void BiasedLocking::restore_marks() {
 
   assert(_preserved_oop_stack  != NULL, "double free");
   assert(_preserved_mark_stack != NULL, "double free");
-
   int len = _preserved_oop_stack->length();
   for (int i = 0; i < len; i++) {
     Handle owner = _preserved_oop_stack->at(i);

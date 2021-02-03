@@ -1072,6 +1072,7 @@ bool PhaseMacroExpand::eliminate_boxing_node(CallStaticJavaNode *boxing) {
 
 //---------------------------set_eden_pointers-------------------------
 void PhaseMacroExpand::set_eden_pointers(Node* &eden_top_adr, Node* &eden_end_adr) {
+	printf("set eden pointers\n"); //cgmin print
   if (UseTLAB) {                // Private allocation: load from TLS
     Node* thread = transform_later(new (C) ThreadLocalNode());
     int tlab_top_offset = in_bytes(JavaThread::tlab_top_offset());
@@ -1165,7 +1166,7 @@ void PhaseMacroExpand::expand_allocate_common(
             address slow_call_address  // Address of slow call
     )
 {
-
+printf("expand alloc common\n");//cgmin print
   Node* ctrl = alloc->in(TypeFunc::Control);
   Node* mem  = alloc->in(TypeFunc::Memory);
   Node* i_o  = alloc->in(TypeFunc::I_O);
@@ -1627,6 +1628,7 @@ PhaseMacroExpand::initialize_object(AllocateNode* alloc,
                                     Node* control, Node* rawmem, Node* object,
                                     Node* klass_node, Node* length,
                                     Node* size_in_bytes) {
+	printf("init object\n");//cgmin print
   InitializeNode* init = alloc->initialization();
   // Store the klass & mark bits
   Node* mark_node = NULL;
@@ -1688,6 +1690,7 @@ Node* PhaseMacroExpand::prefetch_allocation(Node* i_o, Node*& needgc_false,
                                         Node*& contended_phi_rawmem,
                                         Node* old_eden_top, Node* new_eden_top,
                                         Node* length) {
+	printf("prefetch alloc\n");//cgmin
    enum { fall_in_path = 1, pf_path = 2 };
    if( UseTLAB && AllocatePrefetchStyle == 2 ) {
       // Generate prefetch allocation with watermark check.
@@ -2493,6 +2496,7 @@ void PhaseMacroExpand::eliminate_macro_nodes() {
 //------------------------------expand_macro_nodes----------------------
 //  Returns true if a failure occurred.
 bool PhaseMacroExpand::expand_macro_nodes() {
+	printf("exapnd_macro_nodes\n");//cgmin print
   // Last attempt to eliminate macro nodes.
   eliminate_macro_nodes();
 
