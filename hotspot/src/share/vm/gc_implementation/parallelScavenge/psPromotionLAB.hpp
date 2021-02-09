@@ -52,7 +52,7 @@ class PSPromotionLAB : public CHeapObj<mtGC> {
   HeapWord* _end;
   LabState _state;
 
-  void set_top(HeapWord* value)    { /*assert(_top != (void*)0x59f907fe8 && value != NULL,"ps");*/ printf("ps set_top %p %p\n",_top,value); _top = value; }
+  void set_top(HeapWord* value)    { /*assert(_top != (void*)0x59f907fe8 && value != NULL,"ps");*/ /*printf("ps set_top %p %p\n",_top,value);cgmin print*/ _top = value; }
   void set_bottom(HeapWord* value) { _bottom = value; }
   void set_end(HeapWord* value)    { _end = value; }
 

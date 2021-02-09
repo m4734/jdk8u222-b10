@@ -1639,7 +1639,7 @@ void SharkTopLevelBlock::do_trapping_instance_check(ciKlass* klass) {
 }
 
 void SharkTopLevelBlock::do_new() {
-	printf ("not here\n"); //cgmin print
+//	printf ("not here\n"); //cgmin print
   bool will_link;
   ciInstanceKlass* klass = iter()->get_klass(will_link)->as_instance_klass();
   assert(will_link, "typeflow responsibility");
@@ -1777,7 +1777,7 @@ void SharkTopLevelBlock::do_new() {
     }
     builder()->CreateStore(LLVMValue::intptr_constant(mark), mark_addr);
 
-	printf("not here\n");//cgmin print
+//	printf("not here\n");//cgmin print
 
     // Set the class
     Value *rtklass = builder()->CreateInlineMetadata(klass, SharkType::klass_type());

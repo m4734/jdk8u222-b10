@@ -337,6 +337,13 @@ double AdaptiveSizePolicy::time_since_major_gc() const {
   return result;
 }
 
+double AdaptiveSizePolicy::tsmg() { //cgmin tsmg
+  _major_timer.stop();
+  double result = _major_timer.seconds();
+  _major_timer.start();
+  return result;
+}
+
 // Linear decay of major gc cost
 double AdaptiveSizePolicy::decaying_major_gc_cost() const {
   double major_interval = major_gc_interval_average_for_decay();

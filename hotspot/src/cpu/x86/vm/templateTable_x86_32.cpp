@@ -3267,7 +3267,7 @@ void TemplateTable::invokedynamic(int byte_no) {
 // Allocation
 
 void TemplateTable::_new() {
-	printf("tt new\n"); //cgmin print
+//	printf("tt new\n"); //cgmin print
   transition(vtos, atos);
   __ get_unsigned_2_byte_index_at_bcp(rdx, 1);
   Label slow_case;

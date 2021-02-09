@@ -3319,7 +3319,7 @@ void TemplateTable::invokedynamic(int byte_no) {
 // Allocation
 
 void TemplateTable::_new() {
-	printf("tt new 64\n"); //cgmin print
+//	printf("tt new 64\n"); //cgmin print
   transition(vtos, atos);
   __ get_unsigned_2_byte_index_at_bcp(rdx, 1);
   Label slow_case;
@@ -3458,7 +3458,7 @@ void TemplateTable::_new() {
 
     {
 
-      printf("dta2\n");//cgmin print
+//      printf("dta2\n");//cgmin print
       SkipIfEqual skip(_masm, &DTraceAllocProbes, false);
       // Trigger dtrace event for fastpath
       __ push(atos); // save the return value

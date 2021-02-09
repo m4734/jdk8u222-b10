@@ -74,5 +74,11 @@ void VM_ParallelGCSystemGC::doit() {
     heap->invoke_scavenge();
   } else {
     heap->do_full_collection(false);
+//    heap->fgc = true; //cgmin h2 fgc
+    FILE *out = fopen("gc_scan","w");
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC,&ts);
+    fprintf(out,"%lu %lu\n",ts.tv_sec,ts.tv_nsec);
+    fclose(out);
   }
 }

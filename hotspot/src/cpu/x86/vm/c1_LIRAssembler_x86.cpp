@@ -1626,7 +1626,7 @@ void LIR_Assembler::emit_opConvert(LIR_OpConvert* op) {
 }
 
 void LIR_Assembler::emit_alloc_obj(LIR_OpAllocObj* op) {
-	printf("lir emit alloc obj\n"); //cgmin print
+//	printf("lir emit alloc obj\n"); //cgmin print
   if (op->init_check()) {
     __ cmpb(Address(op->klass()->as_register(),
                     InstanceKlass::init_state_offset()),

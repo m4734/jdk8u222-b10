@@ -491,6 +491,9 @@ class AdaptiveSizePolicy : public CHeapObj<mtGC> {
   virtual bool print_adaptive_size_policy_on(outputStream* st) const;
   bool print_adaptive_size_policy_on(outputStream* st,
                                      uint tenuring_threshold) const;
+
+ public:
+  static double tsmg();
 };
 
 // Class that can be used to print information about the

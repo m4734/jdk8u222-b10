@@ -168,7 +168,7 @@ oop PSPromotionManager::copy_to_survivor_space(oop o) {
 
     // Copy obj
 //    if (*(unsigned long*)(o) >> 16 == 0) // cgmin test
-	    printf("minor header %x old %p new %p class %p size %d\n",(unsigned int)*(intptr_t*)o,(HeapWord*)o,(HeapWord*)new_obj,oop(o)->klass(),new_obj_size); //cgmin print
+//	    printf("minor header %x old %p new %p class %p size %d\n",(unsigned int)*(intptr_t*)o,(HeapWord*)o,(HeapWord*)new_obj,oop(o)->klass(),new_obj_size); //cgmin print
     Copy::aligned_disjoint_words((HeapWord*)o, (HeapWord*)new_obj, new_obj_size);
 
     // Now we have to CAS in the header.

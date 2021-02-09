@@ -1086,7 +1086,7 @@ void LIRGenerator::do_Convert(Convert* x) {
 
 
 void LIRGenerator::do_NewInstance(NewInstance* x) {
-	printf("do new instance\n");//cgmin print
+//	printf("do new instance\n");//cgmin print
   print_if_not_loaded(x);
 
   CodeEmitInfo* info = state_for(x, x->state());

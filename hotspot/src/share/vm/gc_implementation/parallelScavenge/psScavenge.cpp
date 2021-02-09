@@ -240,7 +240,14 @@ bool PSScavenge::invoke() {
     counters->update_full_follows_scavenge(ffs_val);
   }
 
-  if (need_full_gc) {
+bool tgc = false; //cgmin tgc
+/*
+if (AdaptiveSizePolicy::tsmg() > 1.0) //cgmin gc
+	tgc = true;
+	*/
+//printf("tsmg %lf\n",AdaptiveSizePolicy::tsmg()); cgmin print
+
+  if (need_full_gc || tgc) { // cgmin tgc
     GCCauseSetter gccs(heap, GCCause::_adaptive_size_policy);
     CollectorPolicy* cp = heap->collector_policy();
     const bool clear_all_softrefs = cp->should_clear_all_soft_refs();
@@ -489,14 +496,18 @@ bool PSScavenge::invoke_no_policy() {
     size_policy->minor_collection_end(gc_cause);
 
 	//cgmin minor gc end
+if (heap->fgc) //cgmin fgc
+{
 
-printf("cgmin minor gc scan\n");
+	FILE *out = fopen("gc_scan","a");
 
 	struct timespec ts;
 	clock_gettime(CLOCK_MONOTONIC,&ts);
 	unsigned long ttt,ttt3;
 	unsigned long ttt2;
 	ttt = ts.tv_sec%1000*1000+ts.tv_nsec/1000000; //ms
+
+printf("cgmin minor gc scan %lu %lu\n",ts.tv_sec,ts.tv_nsec); //cgmin scan
 
 	MutableSpace* space;
 	HeapWord* start;
@@ -509,6 +520,9 @@ printf("cgmin minor gc scan\n");
 	end = space->top();
 	addr = start;
 
+
+//	printf("minor range %p %p\n",start,end); //cgmin print
+
 	while (addr < end)
 	{
 		if (oop(addr)->is_gc_marked() == false && oop(addr)->has_bias_pattern() == false && oop(addr)->is_unlocked())
@@ -517,11 +531,11 @@ printf("cgmin minor gc scan\n");
 //			  printf("unmarked %p header %08x\n",addr,*((unsigned int*)(addr)));//cgmin print header
 			if (*((unsigned long*)(addr)) & (1 << 10))
 			{
-			ttt3 = 	ttt - (*(unsigned long*)(addr) >> 11);
-			  printf("unmarked %p header %p klass %p ms %lu\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass(),ttt3);//cgmin print header
+			ttt3 = 	(ttt + 1000000 - (*(unsigned long*)(addr) >> 11))%1000000;
+			  fprintf(out,"unmarked %p header %p klass %p ms %lu ttt %lu %lu\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass(),ttt3,ts.tv_sec,ts.tv_nsec);//cgmin print header
 			}
 			else if ((*((unsigned long*)(addr)) & (1 << 9)) == 0)
-			  printf("OOC unmarked %p header %p klass %p\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass());//cgmin print header
+			  fprintf(out,"OOC unmarked %p header %p klass %p\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass());//cgmin print header
 
 
 		}
@@ -533,6 +547,7 @@ printf("cgmin minor gc scan\n");
 	start = space->bottom();
 	end = space->top();
 	addr = start;
+//	printf("minor range %p %p\n",start,end); //cgmin print
 
 	while (addr < end)
 	{
@@ -542,11 +557,11 @@ printf("cgmin minor gc scan\n");
 //			  printf("unmarked %p header %08x\n",addr,*((unsigned int*)(addr)));//cgmin print header
 			if (*((unsigned long*)(addr)) & 1 << 10)
 			{
-			ttt3 = 	ttt - (*(unsigned long*)(addr) >> 11);
-			  printf("unmarked %p header %p klass %p ms %lu\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass(),ttt3);//cgmin print header
+			ttt3 = 	(ttt + 1000000 - (*(unsigned long*)(addr) >> 11))%1000000;
+			  fprintf(out,"unmarked %p header %p klass %p ms %lu\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass(),ttt3);//cgmin print header
 			}
 			else if ((*((unsigned long*)(addr)) & (1 << 9)) == 0)
-			  printf("OOC unmarked %p header %p klass %p\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass());//cgmin print header
+			  fprintf(out,"OOC unmarked %p header %p klass %p\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass());//cgmin print header
 
 
 		}
@@ -554,7 +569,8 @@ printf("cgmin minor gc scan\n");
 	}
 
 printf("cgmin minor gc scan e\n");
-
+fclose(out);
+}
     if (!promotion_failure_occurred) {
       // Swap the survivor spaces.
       young_gen->eden_space()->clear(SpaceDecorator::Mangle);

@@ -34,7 +34,7 @@
 inline HeapWord* ThreadLocalAllocBuffer::allocate(size_t size) {
   invariants();
   HeapWord* obj = top();
-  printf("tlab alloc %p\n",obj);
+//  printf("tlab alloc %p\n",obj); cgmin print
   if (pointer_delta(end(), obj) >= size) {
     // successful thread-local allocation
 #ifdef ASSERT

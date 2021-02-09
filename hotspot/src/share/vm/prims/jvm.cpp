@@ -611,7 +611,7 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
   Handle obj(THREAD, JNIHandles::resolve_non_null(handle));
   const KlassHandle klass (THREAD, obj->klass());
   JvmtiVMObjectAllocEventCollector oam;
-printf("clone obj %p\n",obj); //cgmin print
+//printf("clone obj %p\n",obj); //cgmin print
 #ifdef ASSERT
   // Just checking that the cloneable flag is set correct
   if (obj->is_array()) {
@@ -659,15 +659,17 @@ printf("clone obj %p\n",obj); //cgmin print
                                (size_t)align_object_size(size) / HeapWordsPerLong);
   // Clear the header
   new_obj_oop->init_mark();
-
+/*
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC,&ts);
   unsigned long ttt;
   ttt = ts.tv_sec%1000*1000+ts.tv_nsec/1000000;
   *(unsigned long*)((void*)new_obj_oop) |= (ttt << 11); // header time
   *(unsigned long*)((void*)new_obj_oop) |= (1<<10); //cgmin header
+*/
+  *(unsigned long*)((void*)new_obj_oop) |= (1<<9); //cgmin header
 
-  printf("clone new obj oop %p\n",(void*)new_obj_oop);
+//  printf("clone new obj oop %p\n",(void*)new_obj_oop); //cgmin print
 
   // Store check (mark entire object and let gc sort it out)
   BarrierSet* bs = Universe::heap()->barrier_set();
@@ -703,10 +705,10 @@ printf("clone obj %p\n",obj); //cgmin print
     new_obj_oop = InstanceKlass::register_finalizer(instanceOop(new_obj()), CHECK_NULL);
     new_obj = Handle(THREAD, new_obj_oop);
   }
-printf("new obj oop2 %p\n",(void*)new_obj_oop); //cmgin print
+//printf("new obj oop2 %p\n",(void*)new_obj_oop); //cgmin print
 //  return JNIHandles::make_local(env, new_obj());
 	jobject result =  JNIHandles::make_local(env, new_obj());
-	printf("clone end\n");//cgmin print
+//	printf("clone end\n");//cgmin print
 	return result;
 JVM_END
 

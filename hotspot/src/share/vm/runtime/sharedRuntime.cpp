@@ -974,9 +974,17 @@ int SharedRuntime::dtrace_object_alloc(oopDesc* o, int size) {
 }
 
 int SharedRuntime::dtrace_object_alloc_base(Thread* thread, oopDesc* o, int size) {
-	printf("doab o %p header %x\n",o,*o); //cgmin print
+//	printf("doab o %p header %x\n",o,*o); //cgmin print
 //	if (o == (void*)0x5801809b0)
 //		assert(false,"fff");
+
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC,&ts);
+  unsigned long ttt;
+  ttt = ts.tv_sec%1000*1000+ts.tv_nsec/1000000;
+  *(unsigned long*)((void*)o) |= (ttt << 11); // header time
+  *(unsigned long*)((void*)o) |= (1 << 10); // cgmin header time
+
   assert(DTraceAllocProbes, "wrong call");
   Klass* klass = o->klass();
   Symbol* name = klass->name();

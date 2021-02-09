@@ -36,7 +36,7 @@
 #include "runtime/stubRoutines.hpp"
 
 int C1_MacroAssembler::lock_object(Register hdr, Register obj, Register disp_hdr, Register scratch, Label& slow_case) {
-	printf("asm lock object\n");//cgmin print
+//	printf("asm lock object\n");//cgmin print
   const int aligned_mask = BytesPerWord -1;
   const int hdr_offset = oopDesc::mark_offset_in_bytes();
   assert(hdr == rax, "hdr must be rax, for the cmpxchg instruction");
@@ -174,7 +174,7 @@ void C1_MacroAssembler::initialize_header(Register obj, Register klass, Register
 //	orptr(Address(obj,oopDesc::mark_offset_in_bytes()), (int)ttt); //cgmin header
 //  printf("asm init header %x\n",ttt);//cgmin print header
 
-  orptr(Address(obj,oopDesc::mark_offset_in_bytes()), (int)(1 << 9)); //cgmin header asm summy
+  orptr(Address(obj,oopDesc::mark_offset_in_bytes()), (int)(1 << 9)); //cgmin header asm dummy
 
 #ifdef _LP64
   if (UseCompressedClassPointers) { // Take care not to kill klass
@@ -254,7 +254,7 @@ void C1_MacroAssembler::initialize_body(Register obj, Register len_in_bytes, int
 
 
 void C1_MacroAssembler::allocate_object(Register obj, Register t1, Register t2, int header_size, int object_size, Register klass, Label& slow_case) {
-	printf("c1 alloc obj\n"); //cgmin print
+//	printf("c1 alloc obj\n"); //cgmin print
   assert(obj == rax, "obj must be in rax, for cmpxchg");
   assert_different_registers(obj, t1, t2); // XXX really?
   assert(header_size >= 0 && object_size >= header_size, "illegal sizes");

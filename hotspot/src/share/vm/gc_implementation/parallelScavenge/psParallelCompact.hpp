@@ -482,6 +482,7 @@ private:
   PSVirtualSpace* _block_vspace;
   BlockData*      _block_data;
   size_t          _block_count;
+
 };
 
 inline uint
@@ -1325,6 +1326,7 @@ class PSParallelCompact : AllStatic {
   // Verify that all the regions have been emptied.
   static void verify_complete(SpaceId space_id);
 #endif  // #ifdef ASSERT
+
 };
 
 inline bool PSParallelCompact::mark_obj(oop obj) {

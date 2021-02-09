@@ -1065,7 +1065,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
                                          Label& done,
                                          Label* slow_case,
                                          BiasedLockingCounters* counters) {
-	printf("asm biased locking enter\n"); //cgmin print
+//	printf("asm biased locking enter\n"); //cgmin print
   assert(UseBiasedLocking, "why call this otherwise?");
   assert(swap_reg == rax, "swap_reg must be rax for cmpxchgq");
   LP64_ONLY( assert(tmp_reg != noreg, "tmp_reg must be supplied"); )
@@ -1287,7 +1287,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
 }
 
 void MacroAssembler::biased_locking_exit(Register obj_reg, Register temp_reg, Label& done) {
-	printf("asm biased lockking exit\n");//cgmin print
+//	printf("asm biased lockking exit\n");//cgmin print
   assert(UseBiasedLocking, "why call this otherwise?");
 
   // Check for biased locking unlock case, which is a no-op
@@ -2962,7 +2962,7 @@ void MacroAssembler::eden_allocate(Register obj,
                                    int con_size_in_bytes,
                                    Register t1,
                                    Label& slow_case) {
-	printf("eden alloc\n");//cgmin print
+//	printf("eden alloc\n");//cgmin print
   assert(obj == rax, "obj must be in rax, for cmpxchg");
   assert_different_registers(obj, var_size_in_bytes, t1);
   if (CMSIncrementalMode || !Universe::heap()->supports_inline_contig_alloc()) {
@@ -4452,7 +4452,7 @@ void MacroAssembler::tlab_allocate(Register obj,
                                    Register t1,
                                    Register t2,
                                    Label& slow_case) {
-//	printf("asm tlab alloc\n");
+//	printf("asm tlab alloc\n"); //cgmin print
   assert_different_registers(obj, t1, t2);
   assert_different_registers(obj, var_size_in_bytes, t1);
   Register end = t2;
@@ -5347,7 +5347,7 @@ void MacroAssembler::verify_oop_addr(Address addr, const char* s) {
 }
 
 void MacroAssembler::verify_tlab() {
-	printf("verify tlab\n");//cgmin print
+//	printf("verify tlab\n");//cgmin print
 #ifdef ASSERT
   if (UseTLAB && VerifyOops) {
     Label next, ok;

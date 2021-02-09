@@ -148,7 +148,7 @@ IRT_END
 // Allocation
 
 IRT_ENTRY(void, InterpreterRuntime::_new(JavaThread* thread, ConstantPool* pool, int index))
-	printf("interpreter alloc\n"); //cgmin print
+//	printf("interpreter alloc\n"); //cgmin print
   Klass* k_oop = pool->klass_at(index, CHECK);
   instanceKlassHandle klass (THREAD, k_oop);
 

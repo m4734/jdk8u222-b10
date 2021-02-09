@@ -229,7 +229,7 @@ JRT_BLOCK_ENTRY(void, OptoRuntime::new_instance_C(Klass* klass, JavaThread* thre
 #endif
   assert(check_compiled_frame(thread), "incorrect caller");
 
-	printf("opto obj alloc\n");
+//	printf("opto obj alloc\n"); //cgmin print
 
   // These checks are cheap to make and support reflective allocation.
   int lh = klass->layout_helper();

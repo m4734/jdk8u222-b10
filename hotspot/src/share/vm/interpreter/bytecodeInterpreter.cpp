@@ -2177,7 +2177,7 @@ run:
         }
 
       CASE(_new): {
-	      printf("interpreter new\n");
+//	      printf("interpreter new\n");//cgmin print
         u2 index = Bytes::get_Java_u2(pc+1);
         ConstantPool* constants = istate->method()->constants();
         if (!constants->tag_at(index).is_unresolved_klass()) {
@@ -2194,7 +2194,7 @@ run:
             bool need_zero = !ZeroTLAB;
             if (UseTLAB) {
               result = (oop) THREAD->tlab().allocate(obj_size);
-	      printf("fast2 alloc %p\n",result); //cgmin print
+//	      printf("fast2 alloc %p\n",result); //cgmin print
             }
             // Disable non-TLAB-based fast-path, because profiling requires that all
             // allocations go through InterpreterRuntime::_new() if THREAD->tlab().allocate
@@ -2215,7 +2215,7 @@ run:
             }
 #endif
             if (result != NULL) {
-		    printf("fast alloc %p\n",result);//cgmin print
+//		    printf("fast alloc %p\n",result);//cgmin print
               // Initialize object (if nonzero size and need) and then the header
               if (need_zero ) {
                 HeapWord* to_zero = (HeapWord*) result + sizeof(oopDesc) / oopSize;
@@ -2250,7 +2250,7 @@ run:
         UPDATE_PC_AND_TOS_AND_CONTINUE(3, 1);
       }
       CASE(_anewarray): {
-	      printf("a new array\n");//cgmin print
+//	      printf("a new array\n");//cgmin print
         u2 index = Bytes::get_Java_u2(pc+1);
         jint size = STACK_INT(-1);
         CALL_VM(InterpreterRuntime::anewarray(THREAD, METHOD->constants(), index, size),
@@ -2263,7 +2263,7 @@ run:
         UPDATE_PC_AND_CONTINUE(3);
       }
       CASE(_multianewarray): {
-	      printf("multi a new array\n");//cgmin print
+//	      printf("multi a new array\n");//cgmin print
         jint dims = *(pc+3);
         jint size = STACK_INT(-1);
         // stack grows down, dimensions are up!

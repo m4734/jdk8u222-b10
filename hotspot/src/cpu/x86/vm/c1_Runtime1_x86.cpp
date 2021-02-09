@@ -969,7 +969,7 @@ OopMapSet* Runtime1::generate_patching(StubAssembler* sasm, address target) {
 
 
 OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
-printf("gcf\n");//cgmin print
+//printf("gcf\n");//cgmin print
   // for better readability
   const bool must_gc_arguments = true;
   const bool dont_gc_arguments = false;
@@ -1501,7 +1501,7 @@ printf("gcf\n");//cgmin print
 
     case dtrace_object_alloc_id:
       { // rax,: object
-	      printf("doaid\n");//cgmin print
+//	      printf("doaid\n");//cgmin print
         StubFrame f(sasm, "dtrace_object_alloc", dont_gc_arguments);
         // we can't gc here so skip the oopmap but make sure that all
         // the live registers get saved.

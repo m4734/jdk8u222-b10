@@ -247,6 +247,8 @@ class ParallelScavengeHeap : public CollectedHeap {
     ParStrongRootsScope();
     ~ParStrongRootsScope();
   };
+ public:
+  bool fgc = false; // cgmin fgc
 };
 
 #endif // SHARE_VM_GC_IMPLEMENTATION_PARALLELSCAVENGE_PARALLELSCAVENGEHEAP_HPP

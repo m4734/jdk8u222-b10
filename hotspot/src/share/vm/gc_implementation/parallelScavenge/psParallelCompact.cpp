@@ -2077,6 +2077,8 @@ bool PSParallelCompact::invoke_no_policy(bool maximum_heap_compaction) {
     marking_start.update();
     marking_phase(vmthread_cm, maximum_heap_compaction, &_gc_tracer);
 
+	scan(); //cgmin scan
+
     bool max_on_system_gc = UseMaximumCompactionOnSystemGC
       && gc_cause == GCCause::_java_lang_system_gc;
     summary_phase(vmthread_cm, maximum_heap_compaction || max_on_system_gc);
@@ -2088,7 +2090,6 @@ bool PSParallelCompact::invoke_no_policy(bool maximum_heap_compaction) {
     // needed by the compaction for filling holes in the dense prefix.
     adjust_roots();
 
-	scan(); //cgmin
 
     compaction_start.update();
     compact(); //cgmin compact
@@ -2695,9 +2696,17 @@ void PSParallelCompact::scan() {
 	HeapWord* end;
 
 //	ParallelCompactData& sd = summary_data();
+  ParallelScavengeHeap* heap = (ParallelScavengeHeap*)Universe::heap();
 
-	printf("cgmin full gc scan\n");
+	printf("cgmin full gc scan %lu %lu\n",ts.tv_sec,ts.tv_nsec); //cgmin scan
 
+FILE *out = fopen("gc_scan","a");
+//	if (heap->fgc == false)
+//		fprintf(out,"%lu %lu\n",ts.tv_sec,ts.tv_nsec);
+//heap->fgc = true; // cgmin specjvm
+
+if (heap->fgc)
+{
 	for (unsigned int i = 0; i < last_space_id; ++i) {
 
 	MutableSpace* space = _space_info[i].space();
@@ -2706,12 +2715,13 @@ void PSParallelCompact::scan() {
 	end = space->top();
 
 	addr = start;
-
+//printf("full range %p %p\n",start,end);
 	while (addr < end)
 	{
+//		printf("%p ",addr);
 		if (oop(addr)->is_gc_marked() == false && oop(addr)->has_bias_pattern() == false && oop(addr)->is_unlocked())
 		{
-
+//printf("%p ",addr);
 //			printf("unmarked %p\n",addr);
 
 //			  printf("unmarked %p header %08x\n",addr,*((unsigned int*)(addr)));//cgmin print header
@@ -2719,19 +2729,24 @@ void PSParallelCompact::scan() {
 //			ttt3 = (ttt+100000-ttt2)%100000;
 			if (*((unsigned long*)(addr)) & (1 << 10))
 			{
-			ttt3 = 	ttt - (*(unsigned long*)(addr) >> 11);
-			  printf("unmarked %p header %p klass %p ms %lu\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass(),ttt3);//cgmin print header
+			ttt3 = 	(ttt + 1000000 - (*(unsigned long*)(addr) >> 11))%1000000;
+			  fprintf(out,"unmarked %p header %p klass %p ms %lu ttt %lu %lu\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass(),ttt3,ts.tv_sec,ts.tv_nsec);//cgmin print header
 			}
 			else if ((*((unsigned long*)(addr)) & (1 << 9)) == 0)
-			  printf("OOC unmarked %p header %p klass %p\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass());//cgmin print header
+			  fprintf(out,"OOC unmarked %p header %p klass %p\n",addr,*((uintptr_t*)(addr)),oop(addr)->klass());//cgmin print header
 
 
 		}
+//printf("%d\n",oop(addr)->size());
 		addr+=oop(addr)->size();
 	}
 	}
-
+fclose(out);
 	printf("cgmin full gc scan e\n");
+}
+
+
+//	heap->fgc = true;
 }
 
 void PSParallelCompact::compact() {
